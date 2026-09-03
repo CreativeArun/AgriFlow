@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log*
+.env
+.env.*
+
+# React/Vite
+dist/
+build/
+
+# Java/Spring Boot
+target/
+*.class
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
