@@ -3,49 +3,181 @@ import L from 'leaflet';
 import { logisticsService, trackingService } from '../lib/api/services.js';
 import { MapPin, Radio } from 'lucide-react';
 
+const STATE_CENTROIDS = {
+  'punjab': [30.9010, 75.8573],          // Central Punjab (Ludhiana)
+  'haryana': [29.3909, 76.9635],         // Central Haryana (Panipat/Karnal)
+  'uttar pradesh': [26.8467, 80.9462],   // Central UP (Lucknow)
+  'up': [26.8467, 80.9462],
+  'delhi': [28.6139, 77.2090],
+  'rajasthan': [26.9124, 75.7873],       // Jaipur
+  'madhya pradesh': [23.2599, 77.4126],  // Bhopal
+  'mp': [23.2599, 77.4126],
+  'maharashtra': [19.9975, 73.7898],     // Nashik
+  'karnataka': [12.9716, 77.5946],       // Bengaluru
+  'tamil nadu': [13.0827, 80.2707],      // Chennai
+  'telangana': [17.3850, 78.4867],       // Hyderabad
+  'andhra pradesh': [16.5062, 80.6480],  // Vijayawada
+  'ap': [16.5062, 80.6480],
+  'gujarat': [23.0225, 72.5714],         // Ahmedabad
+  'bihar': [25.5941, 85.1376],           // Patna
+  'west bengal': [22.5726, 88.3639],     // Kolkata
+  'himachal': [31.1048, 77.1734],        // Shimla
+  'himachal pradesh': [31.1048, 77.1734],
+  'jammu': [32.7266, 74.8570],
+  'kashmir': [34.0837, 74.7973],
+  'kerala': [9.9312, 76.2673]
+};
+
 const KNOWN_COORDINATES = {
-  // Delhi NCR & Haryana
-  'ghazipur': [28.6256, 77.3292],
-  'ghaziabad': [28.6692, 77.4538],
-  'azadpur': [28.7159, 77.1706],
+  // Disambiguated Multi-Location Names
+  'ghazipur uttar pradesh': [25.5840, 83.5770],
+  'ghazipur up': [25.5840, 83.5770],
+  'ghazipur mandi': [28.6256, 77.3292],
+  'ghazipur delhi': [28.6256, 77.3292],
+  'ghazipur': [25.5840, 83.5770], // Default Ghazipur district in UP unless mandi specified
+
+  // Punjab (including spelling variations)
+  'ludhiana': [30.9010, 75.8573],
+  'ludhiyana': [30.9010, 75.8573],
+  'ludhianah': [30.9010, 75.8573],
+  'chandigarh': [30.7333, 76.7794],
+  'amritsar': [31.6340, 74.8723],
+  'jalandhar': [31.3260, 75.5762],
+  'patiala': [30.3398, 76.3869],
+  'bathinda': [30.2110, 74.9455],
+  'bhatinda': [30.2110, 74.9455],
+  'moga': [30.8230, 75.1734],
+  'khanna': [30.7060, 76.2200],
+  'hoshiarpur': [31.5300, 75.9100],
+  'ferozepur': [30.9237, 74.6033],
+  'firozpur': [30.9237, 74.6033],
+  'pathankot': [32.2684, 75.6529],
+  'sangrur': [30.2450, 75.8420],
+  'faridkot': [30.6769, 74.7583],
+  'fazilka': [30.4037, 74.0254],
+  'mansa': [29.9880, 75.3960],
+  'kapurthala': [31.3800, 75.3800],
+  'barnala': [30.3819, 75.5460],
+  'abohar': [30.1450, 74.1990],
+
+  // Haryana
+  'yamunanagar': [30.1290, 77.2674],
+  'yamuna nagar': [30.1290, 77.2674],
+  'jagadhri': [30.1681, 77.2970],
   'panipat': [29.3909, 76.9635],
   'sonipat': [28.9931, 77.0151],
-  'noida': [28.5355, 77.3910],
-  'greater noida': [28.4744, 77.5040],
-  'okhla': [28.5434, 77.2848],
-  'keshopur': [28.6472, 77.0932],
-  'narela': [28.8527, 77.0932],
-  'delhi': [28.6139, 77.2090],
+  'sonepat': [28.9931, 77.0151],
+  'karnal': [29.6857, 76.9905],
+  'kurukshetra': [29.9695, 76.8783],
+  'ambala': [30.3782, 76.7767],
+  'rohtak': [28.8955, 76.6066],
+  'hisar': [29.1492, 75.7217],
+  'hissar': [29.1492, 75.7217],
+  'sirsa': [29.5349, 75.0298],
+  'fatehabad': [29.5146, 75.4542],
   'gurugram': [28.4595, 77.0266],
   'gurgaon': [28.4595, 77.0266],
   'faridabad': [28.4089, 77.3178],
-  'karnal': [29.6857, 76.9905],
-  'rohtak': [28.8955, 76.6066],
-  'hisar': [29.1492, 75.7217],
-  'ambala': [30.3782, 76.7767],
-  'kurukshetra': [29.9695, 76.8783],
-  'sirsa': [29.5349, 75.0298],
-  'haryana': [29.1492, 76.8500],
+  'jind': [29.3160, 76.3150],
+  'kaithal': [29.8015, 76.3996],
+  'rewari': [28.1920, 76.6186],
+  'palwal': [28.1447, 77.3256],
+  'bhiwani': [28.7932, 76.1390],
+  'jhajjar': [28.6063, 76.6565],
+  'panchkula': [30.6942, 76.8606],
+  'charkhi dadri': [28.5921, 76.2653],
+  'nuh': [28.1130, 77.0150],
+  'mahendragarh': [28.2810, 76.1520],
+
+  // Delhi NCR
+  'delhi': [28.6139, 77.2090],
+  'new delhi': [28.6139, 77.2090],
+  'azadpur': [28.7159, 77.1706],
+  'azadpur mandi': [28.7159, 77.1706],
+  'okhla': [28.5434, 77.2848],
+  'okhla mandi': [28.5434, 77.2848],
+  'keshopur': [28.6472, 77.0932],
+  'narela': [28.8527, 77.0932],
+  'noida': [28.5355, 77.3910],
+  'greater noida': [28.4744, 77.5040],
+  'ghaziabad': [28.6692, 77.4538],
+
+  // Uttar Pradesh
+  'fatehpur': [25.9286, 80.8130],
+  'fatehpur uttar pradesh': [25.9286, 80.8130],
+  'fatehpur up': [25.9286, 80.8130],
+  'fatehpur sikri': [27.0945, 77.6679],
+  'kanpur': [26.4499, 80.3319],
+  'lucknow': [26.8467, 80.9462],
+  'prayagraj': [25.4358, 81.8463],
+  'allahabad': [25.4358, 81.8463],
+  'varanasi': [25.3176, 82.9739],
+  'banaras': [25.3176, 82.9739],
+  'kashi': [25.3176, 82.9739],
+  'gorakhpur': [26.7606, 83.3732],
+  'agra': [27.1767, 78.0081],
+  'aligarh': [27.8974, 78.0880],
+  'mathura': [27.4924, 77.6737],
   'meerut': [28.9845, 77.7064],
   'muzaffarnagar': [29.4727, 77.7085],
-  'hapur': [28.7306, 77.7759],
-  'agra': [27.1767, 78.0081],
-  'mathura': [27.4924, 77.6737],
-  'aligarh': [27.8974, 78.0880],
-  'moradabad': [28.8386, 78.7733],
+  'muzaffar nagar': [29.4727, 77.7085],
+  'saharanpur': [29.9671, 77.5510],
   'bareilly': [28.3670, 79.4304],
-  'lucknow': [26.8467, 80.9462],
-  'kanpur': [26.4499, 80.3319],
-  'varanasi': [25.3176, 82.9739],
-  'prayagraj': [25.4358, 81.8463],
-  'gorakhpur': [26.7606, 83.3732],
+  'moradabad': [28.8386, 78.7733],
+  'hapur': [28.7306, 77.7759],
+  'ayodhya': [26.7922, 82.1998],
+  'faizabad': [26.7730, 82.1460],
+  'jhansi': [25.4484, 78.5685],
+  'firozabad': [27.1591, 78.3957],
+  'etawah': [26.7769, 79.0238],
+  'unnao': [26.5393, 80.4878],
+  'raebareli': [26.2269, 81.2427],
+  'sultanpur': [26.2648, 82.0727],
+  'pratapgarh': [25.8970, 81.9442],
+  'jaunpur': [25.7464, 82.6837],
+  'mirzapur': [25.1337, 82.5644],
+  'ballia': [25.7600, 84.1485],
+  'deoria': [26.5024, 83.7791],
+  'azamgarh': [26.0738, 83.1859],
+  'basti': [26.7995, 82.7634],
+  'gonda': [27.1306, 81.9619],
+  'bahraich': [27.5750, 81.5971],
+  'barabanki': [26.9269, 81.1834],
+  'sitapur': [27.5684, 80.6798],
+  'hardoi': [27.3944, 80.1294],
+  'lakhimpur': [27.9482, 80.7788],
+  'pilibhit': [28.6310, 79.8044],
+  'shahjahanpur': [27.8804, 79.9149],
+  'badaun': [28.0300, 79.1200],
+  'bulandshahr': [28.4069, 77.8498],
+  'baghpat': [28.9450, 77.2200],
+  'shamli': [29.4497, 77.3100],
+  'farrukhabad': [27.3820, 79.5840],
+  'kannauj': [27.0540, 79.9170],
+  'mainpuri': [27.2285, 79.0270],
+  'banda': [25.4750, 80.3350],
+  'orai': [25.9890, 79.4520],
+  'jalaun': [25.9890, 79.4520],
+  'hamirpur': [25.9520, 80.1510],
+  'mahoba': [25.2920, 79.8730],
+  'chitrakoot': [25.2040, 80.8520],
+  'kaushambi': [25.5340, 81.4280],
+  'chandauli': [25.2600, 83.2700],
+  'sonbhadra': [24.6850, 83.0650],
+  'bhadohi': [25.3900, 82.5700],
+  'mau': [25.9420, 83.5600],
+  'rampur': [28.8050, 79.0250],
+  'bijnor': [29.3730, 78.1360],
+  'amroha': [28.9040, 78.4680],
 
   // Maharashtra
   'nashik': [19.9975, 73.7898],
   'lasalgaon': [20.1478, 74.2253],
   'pune': [18.5204, 73.8567],
+  'pune market yard': [18.4900, 73.8650],
   'mumbai': [19.0760, 72.8777],
   'vashi': [19.0771, 72.9986],
+  'vashi apmc': [19.0771, 72.9986],
   'navi mumbai': [19.0330, 73.0297],
   'nagpur': [21.1458, 79.0882],
   'solapur': [17.6599, 75.9064],
@@ -56,7 +188,6 @@ const KNOWN_COORDINATES = {
   'jalgaon': [21.0077, 75.5626],
   'aurangabad': [19.8762, 75.3433],
   'sambhajinagar': [19.8762, 75.3433],
-  'maharashtra': [19.7515, 75.7139],
 
   // Karnataka & South
   'bengaluru': [12.9716, 77.5946],
@@ -77,11 +208,11 @@ const KNOWN_COORDINATES = {
   'bellary': [15.1394, 76.9214],
   'tumakuru': [13.3409, 77.1010],
   'tumkur': [13.3409, 77.1010],
-  'karnataka': [15.3173, 75.7139],
 
   // Tamil Nadu, AP, Telangana
   'chennai': [13.0827, 80.2707],
   'koyambedu': [13.0694, 80.1948],
+  'koyambedu apmc': [13.0694, 80.1948],
   'coimbatore': [11.0168, 76.9558],
   'madurai': [9.9252, 78.1198],
   'salem': [11.6643, 78.1460],
@@ -90,6 +221,7 @@ const KNOWN_COORDINATES = {
   'trichy': [10.7905, 78.7047],
   'hyderabad': [17.3850, 78.4867],
   'bowenpally': [17.4700, 78.4850],
+  'bowenpally mandi': [17.4700, 78.4850],
   'secunderabad': [17.4399, 78.4983],
   'warangal': [17.9689, 79.5941],
   'guntur': [16.3067, 80.4365],
@@ -99,47 +231,89 @@ const KNOWN_COORDINATES = {
   'anantapur': [14.6819, 77.6006],
   'kurnool': [15.8281, 78.0373],
 
-  // Gujarat, Rajasthan, MP, Punjab, etc.
+  // Rajasthan & MP
+  'jaipur': [26.9124, 75.7873],
+  'jodhpur': [26.2389, 73.0243],
+  'kota': [25.2138, 75.8648],
+  'bikaner': [28.0229, 73.3119],
+  'alwar': [27.5530, 76.6346],
+  'sri ganganagar': [29.9094, 73.8799],
+  'indore': [22.7196, 75.8577],
+  'bhopal': [23.2599, 77.4126],
+  'jabalpur': [23.1815, 79.9864],
+  'gwalior': [26.2183, 78.1828],
+  'ujjain': [23.1765, 75.7885],
+
+  // Gujarat, Eastern & Northern
   'ahmedabad': [23.0225, 72.5714],
   'surat': [21.1702, 72.8311],
   'rajkot': [22.3039, 70.8022],
   'vadodara': [22.3072, 73.1812],
-  'jaipur': [26.9124, 75.7873],
-  'jodhpur': [26.2389, 73.0243],
-  'kota': [25.2138, 75.8648],
-  'indore': [22.7196, 75.8577],
-  'bhopal': [23.2599, 77.4126],
-  'jabalpur': [23.1815, 79.9864],
-  'chandigarh': [30.7333, 76.7794],
-  'ludhiana': [30.9010, 75.8573],
-  'amritsar': [31.6340, 74.8723],
-  'jalandhar': [31.3260, 75.5762],
   'kolkata': [22.5726, 88.3639],
   'patna': [25.5941, 85.1376],
-  'kochi': [9.9312, 76.2673],
-  'cochin': [9.9312, 76.2673],
+  'ranchi': [23.3441, 85.3096],
+  'bhubaneswar': [20.2961, 85.8245],
+  'guwahati': [26.1445, 91.7362],
   'shimla': [31.1048, 77.1734],
   'solan': [30.9084, 77.0999],
+  'dehradun': [30.3165, 78.0322],
+  'haridwar': [29.9457, 78.1642],
   'jammu': [32.7266, 74.8570],
-  'srinagar': [34.0837, 74.7973]
+  'srinagar': [34.0837, 74.7973],
+  'kochi': [9.9312, 76.2673]
 };
 
-function resolveLocationSync(locationName, defaultCoords) {
-  if (!locationName || typeof locationName !== 'string') return defaultCoords;
-// Smart coordinate resolver for any Indian mandi, city, or custom hub
+const GEOCODE_CACHE = new Map();
+
+// Helper Levenshtein distance for typo-tolerant city matching
+function levenshteinDistance(s1, s2) {
+  if (s1 === s2) return 0;
+  if (!s1.length) return s2.length;
+  if (!s2.length) return s1.length;
+  const d = [];
+  for (let i = 0; i <= s1.length; i++) d[i] = [i];
+  for (let j = 0; j <= s2.length; j++) d[0][j] = j;
+  for (let i = 1; i <= s1.length; i++) {
+    for (let j = 1; j <= s2.length; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+    }
+  }
+  return d[s1.length][s2.length];
+}
+
+// Phonetic / spelling cleaner for Indian city names
+function normalizePhonetic(str) {
+  return str
+    .replace(/iy/g, 'i')
+    .replace(/ee/g, 'i')
+    .replace(/oo/g, 'u')
+    .replace(/dh/g, 'd')
+    .replace(/th/g, 't')
+    .replace(/bh/g, 'b')
+    .replace(/kh/g, 'k')
+    .replace(/ph/g, 'f')
+    .replace(/gh/g, 'g')
+    .replace(/sh/g, 's')
+    .replace(/nagar/g, ' nagar')
+    .replace(/pur/g, ' pur');
+}
+
+// Synchronous smart resolver with phrase, word, phonetic, fuzzy, and state matching
 function resolveLocationCoordinates(locationName, role = 'dest') {
+  const defaultCoords = role === 'origin' ? [29.3909, 76.9635] : [28.7159, 77.1706];
   if (!locationName || typeof locationName !== 'string') {
-    return role === 'origin' ? [29.3909, 76.9635] : [28.7159, 77.1706];
+    return defaultCoords;
   }
 
-  const clean = locationName.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
-  const words = clean.split(/\s+/).filter(w => w.length > 2);
+  const clean = locationName.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+  if (!clean) return defaultCoords;
 
-  // 1. Direct sub-match
-  for (const [key, coords] of Object.entries(KNOWN_COORDINATES)) {
-    if (clean.includes(key) || key.includes(clean)) {
-      return coords;
-  // 1. Direct key match (sorted by key length descending for specificity)
+  if (GEOCODE_CACHE.has(clean)) {
+    return GEOCODE_CACHE.get(clean);
+  }
+
+  // 1. Direct multi-word key match (sorted by length descending for maximum specificity)
   const keys = Object.keys(KNOWN_COORDINATES).sort((a, b) => b.length - a.length);
   for (const key of keys) {
     if (clean.includes(key)) {
@@ -147,44 +321,110 @@ function resolveLocationCoordinates(locationName, role = 'dest') {
     }
   }
 
-  // 2. Word-by-word matching
   // 2. Word-by-word match
+  const words = clean.split(/\s+/).filter(w => w.length > 2 && !['mandi', 'market', 'apmc', 'junction', 'road', 'city', 'district', 'village', 'near', 'from', 'to'].includes(w));
   for (const word of words) {
     if (KNOWN_COORDINATES[word]) {
-      return KNOWN_COORDINATES[word];
       return [...KNOWN_COORDINATES[word]];
     }
-    for (const [key, coords] of Object.entries(KNOWN_COORDINATES)) {
     for (const key of keys) {
       if (key.includes(word) || word.includes(key)) {
-        return coords;
         return [...KNOWN_COORDINATES[key]];
       }
     }
   }
 
-  // 3. Fallback coordinates
-  return defaultCoords;
-  // 3. Fallback deterministic geographic mapping inside India based on text hash
-  let hash = 0;
-  for (let i = 0; i < clean.length; i++) {
-    hash = (hash << 5) - hash + clean.charCodeAt(i);
-    hash |= 0;
+  // 3. Phonetic normalization match (e.g. 'ludhiyana' -> 'ludiana' -> matches 'ludhiana')
+  const normClean = normalizePhonetic(clean);
+  for (const key of keys) {
+    if (normClean.includes(normalizePhonetic(key))) {
+      return [...KNOWN_COORDINATES[key]];
+    }
   }
-  const uHash = Math.abs(hash);
-  const latBase = 18.0 + ((uHash % 1200) / 100); // Lat 18.0 to 30.0
-  const lonBase = 73.0 + (((uHash >> 3) % 1100) / 100); // Lon 73.0 to 84.0
 
-  return [parseFloat(latBase.toFixed(4)), parseFloat(lonBase.toFixed(4))];
+  // 4. Fuzzy Levenshtein match on words (handles typos like 'Ludhiyana', 'Faridkote')
+  for (const word of words) {
+    if (word.length >= 4) {
+      for (const key of keys) {
+        if (key.length >= 4 && Math.abs(key.length - word.length) <= 2) {
+          if (levenshteinDistance(word, key) <= 2) {
+            return [...KNOWN_COORDINATES[key]];
+          }
+        }
+      }
+    }
+  }
+
+  // 5. State-level regional fallback (places marker inside correct state instead of Delhi)
+  for (const [stateKey, coords] of Object.entries(STATE_CENTROIDS)) {
+    if (clean.includes(stateKey)) {
+      return [...coords];
+    }
+  }
+
+  return defaultCoords;
 }
 
-function adjustCollocatedCoordinates(origin, dest) {
-  const dist = calculateDistanceKm(origin, dest);
-  if (dist >= 5) return { origin, dest };
+// Live multi-source geocoding with fast timeout and caching
+async function fetchGeocodeCoordinates(locationName, role = 'dest') {
+  if (!locationName || typeof locationName !== 'string') {
+    return resolveLocationCoordinates(locationName, role);
+  }
 
-  // If origin and destination are too close (< 5km), separate destination to represent intra-city mandi transfer
-  const offsetDest = [dest[0] + 0.09, dest[1] - 0.12];
-  return { origin, dest: offsetDest };
+  const clean = locationName.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+  if (!clean) return resolveLocationCoordinates(locationName, role);
+
+  if (GEOCODE_CACHE.has(clean)) {
+    return GEOCODE_CACHE.get(clean);
+  }
+
+  const local = resolveLocationCoordinates(locationName, role);
+  const isDefault = (role === 'origin' && local[0] === 29.3909 && local[1] === 76.9635) ||
+    (role === 'dest' && local[0] === 28.7159 && local[1] === 77.1706);
+
+  // If local resolution matched a specific location (or state fallback), cache and return
+  if (!isDefault) {
+    GEOCODE_CACHE.set(clean, local);
+  }
+
+  // Concurrently attempt live geocoding via Photon & Nominatim
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+    // 1. Photon by Komoot (CORS-friendly, handles Indian addresses)
+    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(clean + ' India')}&limit=1`;
+    const res = await fetch(photonUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].geometry.coordinates;
+        if (lat && lng) {
+          const coords = [parseFloat(lat.toFixed(4)), parseFloat(lng.toFixed(4))];
+          GEOCODE_CACHE.set(clean, coords);
+          return coords;
+        }
+      }
+    }
+  } catch (e) {
+    // If Photon fails/times out, try Nominatim
+    try {
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean + ', India')}&limit=1`;
+      const res = await fetch(nomUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+          const coords = [parseFloat(parseFloat(data[0].lat).toFixed(4)), parseFloat(parseFloat(data[0].lon).toFixed(4))];
+          GEOCODE_CACHE.set(clean, coords);
+          return coords;
+        }
+      }
+    } catch (err) { }
+  }
+
+  return local;
 }
 
 function calculateDistanceKm(c1, c2) {
@@ -197,19 +437,21 @@ function calculateDistanceKm(c1, c2) {
     Math.cos((c2[0] * Math.PI) / 180) *
     Math.sin(dLon / 2) *
     Math.sin(dLon / 2);
-      Math.cos((c2[0] * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
   return Math.max(12, Math.round(R * c));
 }
 
-function generateCurvedRoutePoints(start, end, numPoints = 12) {
+function adjustCollocatedCoordinates(origin, dest) {
+  const dist = calculateDistanceKm(origin, dest);
+  if (dist >= 5) return { origin, dest };
+
+  // If origin and destination are too close (< 5km), separate destination to represent intra-city mandi transfer
+  const offsetDest = [dest[0] + 0.09, dest[1] - 0.12];
+  return { origin, dest: offsetDest };
+}
+
 function generateCurvedRoutePoints(start, end, numPoints = 16) {
   const points = [];
-  const midLat = (start[0] + end[0]) / 2 + 0.04;
-  const midLon = (start[1] + end[1]) / 2 - 0.03;
   const midLat = (start[0] + end[0]) / 2 + 0.035;
   const midLon = (start[1] + end[1]) / 2 - 0.025;
 
@@ -249,19 +491,19 @@ export default function MapLeaflet({
     return L.divIcon({
       className: 'custom-leaflet-marker',
       html: `<div style="
-        background-color: ${color};
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        font-size: 14px;
-      ">${label}</div>`,
+background-color: ${color};
+width: 32px;
+height: 32px;
+border-radius: 50%;
+border: 2px solid white;
+box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+display: flex;
+align-items: center;
+justify-content: center;
+color: white;
+font-weight: bold;
+font-size: 14px;
+">${label}</div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16]
     });
@@ -271,9 +513,6 @@ export default function MapLeaflet({
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    const initialOrigin = resolveLocationSync(pickupLocation, [29.3909, 76.9635]);
-    const initialDest = resolveLocationSync(deliveryLocation, [28.7159, 77.1706]);
-    const center = [(initialOrigin[0] + initialDest[0]) / 2, (initialOrigin[1] + initialDest[1]) / 2];
     const rawOrigin = resolveLocationCoordinates(pickupLocation, 'origin');
     const rawDest = resolveLocationCoordinates(deliveryLocation, 'dest');
     const { origin, dest } = adjustCollocatedCoordinates(rawOrigin, rawDest);
@@ -282,7 +521,7 @@ export default function MapLeaflet({
     const map = L.map(mapRef.current, {
       zoomControl: true,
       scrollWheelZoom: true
-    }).setView(center, 9);
+    }).setView(center, 8);
 
     mapInstanceRef.current = map;
 
@@ -291,23 +530,19 @@ export default function MapLeaflet({
     }).addTo(map);
 
     // Initial markers
-    farmMarkerRef.current = L.marker(initialOrigin, { icon: createCustomIcon('#2e7d32', '🌾') })
     farmMarkerRef.current = L.marker(origin, { icon: createCustomIcon('#2e7d32', '🌾') })
       .addTo(map)
       .bindPopup(`<b>Origin (Farm)</b><br/>${pickupLocation}`);
 
-    const mid = [(initialOrigin[0] + initialDest[0]) / 2 + 0.02, (initialOrigin[1] + initialDest[1]) / 2 - 0.01];
     const mid = [(origin[0] + dest[0]) / 2 + 0.02, (origin[1] + dest[1]) / 2 - 0.01];
     centreMarkerRef.current = L.marker(mid, { icon: createCustomIcon('#d97706', '📦') })
       .addTo(map)
       .bindPopup('<b>AgriFlow Transit Hub</b><br/>Quality Checked &amp; Dispatched');
 
-    buyerMarkerRef.current = L.marker(initialDest, { icon: createCustomIcon('#2563eb', '🏬') })
     buyerMarkerRef.current = L.marker(dest, { icon: createCustomIcon('#2563eb', '🏬') })
       .addTo(map)
       .bindPopup(`<b>Buyer Destination</b><br/>${deliveryLocation}`);
 
-    const initialPoints = generateCurvedRoutePoints(initialOrigin, initialDest, 16);
     const initialPoints = generateCurvedRoutePoints(origin, dest, 16);
     routePolylineRef.current = L.polyline(initialPoints, {
       color: '#16a34a',
@@ -320,18 +555,18 @@ export default function MapLeaflet({
     const vehicleIcon = L.divIcon({
       className: 'vehicle-leaflet-marker',
       html: `<div style="
-        background-color: #15803d;
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 17px;
-      ">🚚</div>`,
+background-color: #15803d;
+width: 38px;
+height: 38px;
+border-radius: 50%;
+border: 3px solid white;
+box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+display: flex;
+align-items: center;
+justify-content: center;
+color: white;
+font-size: 17px;
+">🚚</div>`,
       iconSize: [38, 38],
       iconAnchor: [19, 19]
     });
@@ -343,7 +578,6 @@ export default function MapLeaflet({
     setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
-        mapInstanceRef.current.fitBounds([initialOrigin, initialDest], { padding: [60, 60], maxZoom: 12 });
         mapInstanceRef.current.fitBounds([origin, dest], { padding: [60, 60], maxZoom: 12 });
       }
     }, 200);
@@ -355,54 +589,58 @@ export default function MapLeaflet({
     };
   }, []);
 
-  // 2. Dynamically re-calculate route whenever pickupLocation or deliveryLocation changes
+  // 2. Dynamically re-calculate route with live Nominatim geocoding & OSRM routing
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     let isMounted = true;
 
-    const origin = resolveLocationSync(pickupLocation, [29.3909, 76.9635]);
-    const dest = resolveLocationSync(deliveryLocation, [28.7159, 77.1706]);
-    const rawOrigin = resolveLocationCoordinates(pickupLocation, 'origin');
-    const rawDest = resolveLocationCoordinates(deliveryLocation, 'dest');
-    const { origin, dest } = adjustCollocatedCoordinates(rawOrigin, rawDest);
+    const updateLocationsAndRoute = async () => {
+      // Step 1: Live Geocode both locations concurrently
+      const [resolvedOrigin, resolvedDest] = await Promise.all([
+        fetchGeocodeCoordinates(pickupLocation, 'origin'),
+        fetchGeocodeCoordinates(deliveryLocation, 'dest')
+      ]);
 
-    const distKm = Math.max(12, calculateDistanceKm(origin, dest));
-    const hours = Math.floor(distKm / 45);
-    const mins = Math.round(((distKm % 45) / 45) * 60);
-    const etaStr = hours > 0 ? `${hours}h ${mins}m` : `${mins || 30}m`;
-    setRouteStats({
-      distance: `${distKm} km`,
-      eta: etaStr,
-      speed: `${Math.floor(40 + (distKm % 15))} km/h`
-    });
+      if (!isMounted || !mapInstanceRef.current) return;
 
-    const midLat = (origin[0] + dest[0]) / 2 + 0.02;
-    const midLng = (origin[1] + dest[1]) / 2 - 0.01;
-    const centre = [midLat, midLng];
+      const { origin, dest } = adjustCollocatedCoordinates(resolvedOrigin, resolvedDest);
 
-    if (farmMarkerRef.current) {
-      farmMarkerRef.current.setLatLng(origin);
-      farmMarkerRef.current.setPopupContent(`<b>Origin (Farm)</b><br/>${pickupLocation}`);
-    }
-    if (centreMarkerRef.current) {
-      centreMarkerRef.current.setLatLng(centre);
-      centreMarkerRef.current.setPopupContent(`<b>AgriFlow Transit Hub</b><br/>Inspection &amp; Dispatch Hub`);
-    }
-    if (buyerMarkerRef.current) {
-      buyerMarkerRef.current.setLatLng(dest);
-      buyerMarkerRef.current.setPopupContent(`<b>Buyer Destination</b><br/>${deliveryLocation}`);
-    }
+      const distKm = Math.max(12, calculateDistanceKm(origin, dest));
+      const hours = Math.floor(distKm / 45);
+      const mins = Math.round(((distKm % 45) / 45) * 60);
+      const etaStr = hours > 0 ? `${hours}h ${mins}m` : `${mins || 30}m`;
+      setRouteStats({
+        distance: `${distKm} km`,
+        eta: etaStr,
+        speed: `${Math.floor(40 + (distKm % 15))} km/h`
+      });
 
-    let activeWaypoints = generateCurvedRoutePoints(origin, dest, 20);
+      const midLat = (origin[0] + dest[0]) / 2 + 0.02;
+      const midLng = (origin[1] + dest[1]) / 2 - 0.01;
+      const centre = [midLat, midLng];
 
-    if (routePolylineRef.current) {
-      routePolylineRef.current.setLatLngs(activeWaypoints);
-    }
+      if (farmMarkerRef.current) {
+        farmMarkerRef.current.setLatLng(origin);
+        farmMarkerRef.current.setPopupContent(`<b>Origin (Farm)</b><br/>${pickupLocation}`);
+      }
+      if (centreMarkerRef.current) {
+        centreMarkerRef.current.setLatLng(centre);
+        centreMarkerRef.current.setPopupContent(`<b>AgriFlow Transit Hub</b><br/>Inspection &amp; Dispatch Hub`);
+      }
+      if (buyerMarkerRef.current) {
+        buyerMarkerRef.current.setLatLng(dest);
+        buyerMarkerRef.current.setPopupContent(`<b>Buyer Destination</b><br/>${deliveryLocation}`);
+      }
 
-    // Attempt OSRM real highway routing
-    const fetchOSRM = async () => {
+      let activeWaypoints = generateCurvedRoutePoints(origin, dest, 20);
+
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setLatLngs(activeWaypoints);
+      }
+
+      // Attempt OSRM real highway routing
       try {
         const coords = `${origin[1]},${origin[0]};${centre[1]},${centre[0]};${dest[1]},${dest[0]}`;
         const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
@@ -419,45 +657,47 @@ export default function MapLeaflet({
       } catch (err) {
         // Fallback already in place with activeWaypoints
       }
+
+      // Adjust map view to fit new accurate bounds
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+          mapInstanceRef.current.fitBounds([origin, dest], { padding: [60, 60], maxZoom: 12 });
+        }
+      }, 150);
+
+      // Vehicle movement simulation
+      let step = 0;
+      const totalSteps = 400;
+      const animateVehicle = () => {
+        if (!isMounted || !mapInstanceRef.current || !vehicleMarkerRef.current) return;
+
+        step = (step + 1) % totalSteps;
+        const progress = step / totalSteps;
+        const indexFloat = progress * (activeWaypoints.length - 1);
+        const baseIndex = Math.floor(indexFloat);
+        const nextIndex = Math.min(baseIndex + 1, activeWaypoints.length - 1);
+        const subT = indexFloat - baseIndex;
+
+        const p1 = activeWaypoints[baseIndex];
+        const p2 = activeWaypoints[nextIndex];
+        if (p1 && p2) {
+          const currentPos = [
+            p1[0] + (p2[0] - p1[0]) * subT,
+            p1[1] + (p2[1] - p1[1]) * subT
+          ];
+          vehicleMarkerRef.current.setLatLng(currentPos);
+          setProgressPct(Math.round(progress * 100));
+        }
+
+        animFrameRef.current = setTimeout(animateVehicle, 80);
+      };
+
+      if (animFrameRef.current) clearTimeout(animFrameRef.current);
+      animFrameRef.current = setTimeout(animateVehicle, 200);
     };
-    fetchOSRM();
 
-    // Invalidate map size and fit bounds
-    setTimeout(() => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.invalidateSize();
-        mapInstanceRef.current.fitBounds([origin, dest], { padding: [60, 60], maxZoom: 12 });
-      }
-    }, 150);
-
-    // Smooth continuous vehicle progress simulation
-    let step = 0;
-    const totalSteps = 400;
-    const animateVehicle = () => {
-      if (!isMounted || !mapInstanceRef.current || !vehicleMarkerRef.current) return;
-
-      step = (step + 1) % totalSteps;
-      const progress = step / totalSteps;
-      const indexFloat = progress * (activeWaypoints.length - 1);
-      const baseIndex = Math.floor(indexFloat);
-      const nextIndex = Math.min(baseIndex + 1, activeWaypoints.length - 1);
-      const subT = indexFloat - baseIndex;
-
-      const p1 = activeWaypoints[baseIndex];
-      const p2 = activeWaypoints[nextIndex];
-      if (p1 && p2) {
-        const currentPos = [
-          p1[0] + (p2[0] - p1[0]) * subT,
-          p1[1] + (p2[1] - p1[1]) * subT
-        ];
-        vehicleMarkerRef.current.setLatLng(currentPos);
-        setProgressPct(Math.round(progress * 100));
-      }
-
-      animFrameRef.current = setTimeout(animateVehicle, 80);
-    };
-
-    animFrameRef.current = setTimeout(animateVehicle, 200);
+    updateLocationsAndRoute();
 
     return () => {
       isMounted = false;
