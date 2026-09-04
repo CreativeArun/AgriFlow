@@ -1,10 +1,6 @@
 import { io } from 'socket.io-client';
 import { lots as mockLots, order as mockOrder, shipment as mockShipment, services as mockServices } from '../mock/data.js';
 
-const JAVA_API_URL = 'http://localhost:8080/api';
-const AI_API_URL = 'http://localhost:8000/api';
-const LOGISTICS_API_URL = 'http://localhost:5000/api';
-const SOCKET_URL = 'http://localhost:5000';
 const JAVA_API_URL = import.meta.env.VITE_JAVA_API_URL || 'http://localhost:8080/api';
 const AI_API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:8000/api';
 const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || 'http://localhost:5000/api';
