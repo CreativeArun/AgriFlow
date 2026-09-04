@@ -109,32 +109,37 @@ def _detect_crop_species(
     orange_carrot = 0
     green_grapes = 0
     green_leafy = 0
+    sugarcane_stalk = 0
     purple_onion = 0
     violet_brinjal = 0
     earthy_potato = 0
     golden_wheat = 0
     granular_pulse = 0
+    white_cotton = 0
+    rice_grain = 0
 
     for r, g, b in pixels:
         brightness = (r + g + b) / 3.0
         if brightness < 25:
             continue
 
-        # Red Apple vs Red Tomato
-        if r > 140 and r > g * 1.35 and r > b * 1.35:
+        if r > 215 and g > 215 and b > 210:
+            white_cotton += 1
+        elif r > 140 and r > g * 1.35 and r > b * 1.35:
             if r > 175 and g < 75 and b < 70:
                 red_scarlet_tomato += 1
             else:
                 red_crimson_apple += 1
-
-        # Orange: Citrus Orange vs Carrot vs Papaya
         elif r > 180 and 85 < g < 155 and b < 75 and (r - g) > 35:
             if aspect_ratio > 1.35 or aspect_ratio < 0.75:
                 orange_carrot += 1
             else:
                 orange_citrus += 1
-
-        # Yellow: Banana vs Mango vs Pulses vs Wheat
+        elif (g > 80 and r > 70 and b < 90 and g > b * 1.15 and abs(r - g) < 50) or (g > 60 and r > 50 and b < 65 and abs(r - g) < 30):
+            if aspect_ratio > 1.15 or aspect_ratio < 0.85:
+                sugarcane_stalk += 1.6
+            else:
+                sugarcane_stalk += 1.0
         elif r > 160 and g > 135 and b < 120:
             if aspect_ratio > 1.4 or aspect_ratio < 0.7:
                 yellow_banana += 1
@@ -145,26 +150,23 @@ def _detect_crop_species(
             else:
                 golden_wheat += 1
                 granular_pulse += 1
-
-        # Green: Grapes vs Chilli/Vegetables
+        elif r > 180 and g > 175 and b > 150 and abs(r - g) < 25 and (r - b) < 45:
+            rice_grain += 1
         elif g > 95 and g > r * 1.15 and g > b * 1.15:
             if r > 65 and b > 45 and brightness > 100:
                 green_grapes += 1
             else:
                 green_leafy += 1
-
-        # Violet / Purple: Onion vs Brinjal vs Grapes
         elif b > 65 and r > 55 and (b + r) > g * 2.0:
             if r > b * 1.15:
                 purple_onion += 1
             else:
                 violet_brinjal += 1
-
-        # Earthy Potato
         elif 110 < r < 200 and 90 < g < 170 and 50 < b < 130 and abs(r - g) < 45 and b < g:
             earthy_potato += 1
 
     counts = {
+        "Sugarcane": int(sugarcane_stalk),
         "Apple": red_crimson_apple,
         "Tomato": red_scarlet_tomato,
         "Banana": yellow_banana,
@@ -178,6 +180,8 @@ def _detect_crop_species(
         "Potato": earthy_potato,
         "Wheat": int(golden_wheat * 0.4),
         "Pulses (Dal/Gram)": int(granular_pulse * 0.6),
+        "Basmati Rice": int(rice_grain * 0.6),
+        "Cotton": int(white_cotton * 0.5),
     }
 
     best_crop = max(counts, key=counts.get)
@@ -325,6 +329,15 @@ def _local_vision_analysis(
             "Green Chilli": 10,
             "Carrot": 14,
             "Brinjal": 6,
+            "Sugarcane": 20,
+            "Cotton": 180,
+            "Basmati Rice": 180,
+            "Maize": 90,
+            "Garlic": 60,
+            "Ginger": 45,
+            "Papaya": 8,
+            "Watermelon": 14,
+            "Guava": 7,
         }
         base_shelf = fruit_shelf_lives.get(crop_name, 14)
         shelf_factor = 1.0 if grade == "A" else 0.55 if grade == "B" else 0.25
@@ -402,16 +415,20 @@ def analyze_image(
                             "type": "text",
                             "text": (
                                 "You are an agricultural produce quality "
-                                "assessment system. Analyze only the visible "
-                                "fruit or vegetable produce in the image. "
+                                "assessment system. Analyze the visible agricultural produce "
+                                "(crop, fruit, vegetable, stalk, or grain) in the image. "
                                 "Do not evaluate baskets, packaging, clothing, "
                                 "background objects, or other non-produce items. "
                                 "\n\n"
                                 "Return ONLY valid JSON with exactly these "
-                                "fields: score, grade, good_percentage, "
+                                "fields: produce_name, score, grade, good_percentage, "
                                 "damaged_percentage, rotten_percentage, "
                                 "description. "
                                 "\n\n"
+                                "produce_name: the exact name of the identified "
+                                "crop, fruit, grain, or produce in the image (e.g. Sugarcane, "
+                                "Onion, Tomato, Potato, Apple, Mango, Basmati Rice, Wheat, "
+                                "Banana, Cotton, etc.). "
                                 "score: overall visual quality from 0 to 100. "
                                 "grade: A for high quality, B for moderate "
                                 "quality, C for poor quality. "

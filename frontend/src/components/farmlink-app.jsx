@@ -2753,10 +2753,15 @@ function AIInsightsPage({ setActive }) {
     const previewUrl = URL.createObjectURL(file)
     setImagePreview(previewUrl)
 
-    aiService.assessQuality(file, selectedCrop).then(res => {
+    aiService.assessQuality(file).then(res => {
       if (res) {
-        if (res.produce_name && res.produce_name !== 'Harvest Produce' && cropBaselines[res.produce_name]) {
-          setSelectedCrop(res.produce_name)
+        if (res.produce_name && res.produce_name !== 'Harvest Produce' && res.produce_name !== 'Produce') {
+          if (cropBaselines[res.produce_name]) {
+            setSelectedCrop(res.produce_name)
+          } else {
+            setCustomCropsList(prev => Array.from(new Set([...prev, res.produce_name])))
+            setSelectedCrop(res.produce_name)
+          }
         }
         res.imageUrl = res.imageUrl || previewUrl
         setQualityResult(res)

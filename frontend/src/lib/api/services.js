@@ -1011,11 +1011,14 @@ function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
   let orangeCarrotCount = 0;
   let greenGrapesCount = 0;
   let greenLeafyCount = 0;
+  let sugarcaneCount = 0;
   let purpleOnionCount = 0;
   let violetBrinjalCount = 0;
   let earthyPotatoCount = 0;
   let goldenWheatCount = 0;
   let granularPulseCount = 0;
+  let whiteCottonCount = 0;
+  let riceGrainCount = 0;
   let validPixels = 0;
 
   for (let i = 0; i < pixels.length; i += 4) {
@@ -1027,7 +1030,9 @@ function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
     if (brightness < 25) continue;
     validPixels++;
 
-    if (r > 140 && r > g * 1.35 && r > b * 1.35) {
+    if (r > 215 && g > 215 && b > 210) {
+      whiteCottonCount++;
+    } else if (r > 140 && r > g * 1.35 && r > b * 1.35) {
       if (r > 175 && g < 75 && b < 70) {
         redTomatoCount++;
       } else {
@@ -1038,6 +1043,12 @@ function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
         orangeCarrotCount++;
       } else {
         orangeCitrusCount++;
+      }
+    } else if ((g > 80 && r > 70 && b < 90 && g > b * 1.15 && Math.abs(r - g) < 50) || (g > 60 && r > 50 && b < 65 && Math.abs(r - g) < 30)) {
+      if (aspectRatio > 1.15 || aspectRatio < 0.85) {
+        sugarcaneCount += 1.6;
+      } else {
+        sugarcaneCount += 1.0;
       }
     } else if (r > 160 && g > 135 && b < 120) {
       if (aspectRatio > 1.4 || aspectRatio < 0.7) {
@@ -1050,6 +1061,8 @@ function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
         goldenWheatCount++;
         granularPulseCount++;
       }
+    } else if (r > 180 && g > 175 && b > 150 && Math.abs(r - g) < 25 && (r - b) < 45) {
+      riceGrainCount++;
     } else if (g > 95 && g > r * 1.15 && g > b * 1.15) {
       if (r > 65 && b > 45 && brightness > 100) {
         greenGrapesCount++;
@@ -1068,6 +1081,7 @@ function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
   }
 
   const counts = {
+    'Sugarcane': Math.floor(sugarcaneCount),
     'Apple': redAppleCount,
     'Tomato': redTomatoCount,
     'Banana': yellowBananaCount,
@@ -1080,7 +1094,9 @@ function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
     'Brinjal': violetBrinjalCount,
     'Potato': earthyPotatoCount,
     'Wheat': Math.floor(goldenWheatCount * 0.4),
-    'Pulses (Dal/Gram)': Math.floor(granularPulseCount * 0.6)
+    'Pulses (Dal/Gram)': Math.floor(granularPulseCount * 0.6),
+    'Basmati Rice': Math.floor(riceGrainCount * 0.6),
+    'Cotton': Math.floor(whiteCottonCount * 0.5)
   };
 
   let maxCrop = 'Harvest Produce';
@@ -1120,8 +1136,8 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
 
           const fileName = imageFile?.name || '';
           const aspect = (img.naturalWidth || img.width || 120) / Math.max(1, (img.naturalHeight || img.height || 120));
-          let detectedCrop = detectCropFromPixels(pixels, fileName || cropNameHint, aspect);
-          if (cropNameHint && cropNameHint !== 'Produce' && cropNameHint !== 'Harvest Produce') {
+          let detectedCrop = detectCropFromPixels(pixels, fileName, aspect);
+          if ((!detectedCrop || detectedCrop === 'Harvest Produce') && cropNameHint && cropNameHint !== 'Produce' && cropNameHint !== 'Harvest Produce') {
             detectedCrop = cropNameHint;
           }
 
@@ -1192,7 +1208,9 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
           const fruitShelfLives = {
             'Apple': 28, 'Orange': 21, 'Potato': 35, 'Onion': 45, 'Wheat': 120,
             'Pulses (Dal/Gram)': 180, 'Banana': 6, 'Mango': 8, 'Tomato': 9,
-            'Grapes': 7, 'Green Chilli': 10, 'Carrot': 14, 'Brinjal': 6
+            'Grapes': 7, 'Green Chilli': 10, 'Carrot': 14, 'Brinjal': 6,
+            'Sugarcane': 20, 'Cotton': 180, 'Basmati Rice': 180, 'Maize': 90,
+            'Garlic': 60, 'Ginger': 45, 'Papaya': 8, 'Watermelon': 14, 'Guava': 7
           };
           const baseShelf = fruitShelfLives[detectedCrop] || 14;
           const shelfFactor = grade === 'A' ? 1.0 : grade === 'B' ? 0.55 : 0.25;
@@ -1269,7 +1287,7 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
 
 
 export const aiService = {
-  assessQuality: async (imageFile, cropName = 'Produce') => {
+  assessQuality: async (imageFile, cropName = '') => {
     let localDataUrl = null;
     if (imageFile instanceof File || imageFile instanceof Blob) {
       try {
@@ -1289,9 +1307,9 @@ export const aiService = {
         });
         if (res.ok) {
           const data = await res.json();
-          const finalCrop = (data.produce_name && data.produce_name !== 'Harvest Produce')
+          const finalCrop = (data.produce_name && data.produce_name !== 'Harvest Produce' && data.produce_name !== 'Produce')
             ? data.produce_name
-            : (clientAnalysis.produce_name && clientAnalysis.produce_name !== 'Harvest Produce')
+            : (clientAnalysis.produce_name && clientAnalysis.produce_name !== 'Harvest Produce' && clientAnalysis.produce_name !== 'Produce')
               ? clientAnalysis.produce_name
               : (cropName || 'Produce');
 
