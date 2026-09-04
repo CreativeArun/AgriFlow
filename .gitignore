@@ -1,0 +1,75 @@
+# ===============================
+# Environment & Secrets
+# ===============================
+.env
+.env.*
+.env.local
+!.env.example
+
+# ===============================
+# Node / Frontend / Logistics
+# ===============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+dist/
+build/
+.vite/
+.next/
+
+# ===============================
+# Python (agriflow-farm-intelligence-api)
+# ===============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.mypy_cache/
+
+# ===============================
+# Java / Spring Boot (FarmFresh_Backend)
+# ===============================
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+
+# ===============================
+# IDE & Editor Configs
+# ===============================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.iml
+*.iws
+*.ipr
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===============================
+# OS & Logs
+# ===============================
+.DS_Store
+Thumbs.db
+*.log
+logs/
