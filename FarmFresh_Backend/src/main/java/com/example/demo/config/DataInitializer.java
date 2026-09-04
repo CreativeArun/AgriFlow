@@ -15,10 +15,10 @@ public class DataInitializer implements CommandLineRunner {
     private final OrderRepository orderRepository;
 
     public DataInitializer(UserRepository userRepository,
-                           FarmerRepository farmerRepository,
-                           ConsumerRepository consumerRepository,
-                           ProductRepository productRepository,
-                           OrderRepository orderRepository) {
+            FarmerRepository farmerRepository,
+            ConsumerRepository consumerRepository,
+            ProductRepository productRepository,
+            OrderRepository orderRepository) {
         this.userRepository = userRepository;
         this.farmerRepository = farmerRepository;
         this.consumerRepository = consumerRepository;
@@ -32,12 +32,12 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        System.out.println("Seeding default database records for FarmFresh...");
+        System.out.println("Seeding default database records for AgriFlow...");
 
         // 1. Farmer User & Profile
         User farmerUser = new User();
         farmerUser.setName("Ramesh Kumar");
-        farmerUser.setEmail("ramesh@farmfresh.com");
+        farmerUser.setEmail("ramesh@agriflow.in");
         farmerUser.setPassword("password123");
         farmerUser.setPhone("9876543210");
         farmerUser.setRole("FARMER");
@@ -128,4 +128,3 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Default records seeded successfully!");
     }
 }
-

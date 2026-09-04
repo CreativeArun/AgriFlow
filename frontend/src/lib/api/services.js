@@ -30,7 +30,7 @@ export const authService = {
     try {
       const users = await fetchJson(`${JAVA_API_URL}/users`);
       if (users && users.length > 0) return { token: 'dummy_token', user: users[0] };
-    } catch (e) {}
+    } catch (e) { }
     return { token: 'mock_token', user: { id: 1, name: 'Ramesh Kumar' } };
   },
   register: async (userData) => {
@@ -52,7 +52,7 @@ export const farmerService = {
       const availableProduceKg = products
         .filter(p => p.status === 'AVAILABLE')
         .reduce((sum, p) => sum + (p.quantity || 0), 0);
-      
+
       const activeOrders = orders.filter(o => o.status !== 'DELIVERED');
       const totalEarnings = activeOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
       const activeShipments = orders.filter(o => o.shipmentId && o.status !== 'DELIVERED').length;
@@ -106,7 +106,7 @@ export const buyerService = {
     try {
       const products = await fetchJson(`${JAVA_API_URL}/products`).catch(() => []);
       const available = (products || []).filter(p => p.status === 'AVAILABLE' || p.status === 'RESERVED');
-      
+
       if (!available || available.length === 0) {
         return [
           { farmer: 'Ramesh Kumar (Panipat)', crop: 'Onion', quantity: '1,000 kg', grade: 'Grade A', distance: '20 km away', matchScore: 94, reason: 'Exact crop match & verified high quality' },
@@ -160,12 +160,103 @@ export const buyerService = {
   }
 };
 
+// -----------------------------------------------------------------------------
+// Produce Photo & Image Mapping Catalog
+// -----------------------------------------------------------------------------
+export const cropImageMap = {
+  Watermelon: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=600&q=80',
+  Onion: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&w=600&q=80',
+  Potato: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80',
+  Tomato: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
+  Wheat: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80',
+  'Basmati Rice': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80',
+  Rice: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80',
+  Mango: 'https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=600&q=80',
+  Banana: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=600&q=80',
+  Apple: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=600&q=80',
+  Grapes: 'https://images.unsplash.com/photo-1596363505729-4190a9506133?auto=format&fit=crop&w=600&q=80',
+  Papaya: 'https://images.unsplash.com/photo-1617112848923-cc2234396a8d?auto=format&fit=crop&w=600&q=80',
+  Guava: 'https://images.unsplash.com/photo-1536511135773-19961d15ee04?auto=format&fit=crop&w=600&q=80',
+  Pomegranate: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80',
+  'Dragon Fruit': 'https://images.unsplash.com/photo-1527325678964-54921661f888?auto=format&fit=crop&w=600&q=80',
+  Pineapple: 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?auto=format&fit=crop&w=600&q=80',
+  'Green Chilli': 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?auto=format&fit=crop&w=600&q=80',
+  Chilli: 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?auto=format&fit=crop&w=600&q=80',
+  'Red Chilli': 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?auto=format&fit=crop&w=600&q=80',
+  Garlic: 'https://images.unsplash.com/photo-1615477048753-f72535071ee0?auto=format&fit=crop&w=600&q=80',
+  Ginger: 'https://images.unsplash.com/photo-1615485290176-0275815cf1b9?auto=format&fit=crop&w=600&q=80',
+  Carrot: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=600&q=80',
+  Mustard: 'https://images.unsplash.com/photo-1508746829417-e6f548d8d6ed?auto=format&fit=crop&w=600&q=80',
+  Cotton: 'https://images.unsplash.com/photo-1606041008023-472dfb5e530f?auto=format&fit=crop&w=600&q=80',
+  Soybean: 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=600&q=80',
+  Avocado: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=600&q=80',
+  Kiwi: 'https://images.unsplash.com/photo-1585059895524-72359e06133a?auto=format&fit=crop&w=600&q=80',
+  Orange: 'https://images.unsplash.com/photo-1582979512210-99b6a53386f9?auto=format&fit=crop&w=600&q=80',
+  Lemon: 'https://images.unsplash.com/photo-1533082603883-3be825497675?auto=format&fit=crop&w=600&q=80',
+  Strawberry: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=600&q=80'
+};
+
+export function getProduceImage(cropName = '', customUrl = null) {
+  if (customUrl && typeof customUrl === 'string' && customUrl.trim() !== '') {
+    return customUrl;
+  }
+  const name = (cropName || '').trim().toLowerCase();
+  for (const [key, val] of Object.entries(cropImageMap)) {
+    if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
+      return val;
+    }
+  }
+  return 'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=600&q=80';
+}
+
+function getStoredLocalLots() {
+  try {
+    const raw = localStorage.getItem('agriflow_custom_lots');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredLocalLot(lotObj) {
+  try {
+    const current = getStoredLocalLots();
+    const cropKey = (lotObj.crop || lotObj.name || '').toLowerCase().trim();
+    // Replace any existing local listing of the same crop to avoid duplicate entries
+    const filtered = current.filter(l => (l.crop || l.name || '').toLowerCase().trim() !== cropKey && l.id !== lotObj.id);
+    const updated = [lotObj, ...filtered];
+    localStorage.setItem('agriflow_custom_lots', JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Failed to save lot locally:', e);
+  }
+}
+
+function deduplicateAndMerge(localList, remoteOrMockList) {
+  const result = [...localList];
+  const localCropNames = new Set(localList.map(l => (l.crop || l.name || '').toLowerCase().trim()));
+  const localIds = new Set(localList.map(l => String(l.id || '').toLowerCase()));
+
+  for (const item of remoteOrMockList) {
+    const cropKey = (item.crop || item.name || '').toLowerCase().trim();
+    const idKey = String(item.id || '').toLowerCase();
+    // If the user uploaded a custom lot for this crop, omit the duplicate stock/mock version
+    if (localCropNames.has(cropKey) || localIds.has(idKey)) {
+      continue;
+    }
+    result.push(item);
+  }
+  return result;
+}
+
 export const lotService = {
   list: async () => {
+    const localList = getStoredLocalLots();
     try {
       const products = await fetchJson(`${JAVA_API_URL}/products`);
-      if (!products || products.length === 0) return mockLots;
-      return products.map(p => ({
+      if (!products || products.length === 0) {
+        return deduplicateAndMerge(localList, mockLots);
+      }
+      const remote = products.map(p => ({
         id: `LOT-${p.id}`,
         crop: p.name,
         quantity: `${p.quantity} kg`,
@@ -173,27 +264,73 @@ export const lotService = {
         price: `₹${p.price}/qtl`,
         status: p.status === 'AVAILABLE' ? 'Available' : p.status === 'RESERVED' ? 'Reserved' : p.status,
         created: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Today',
-        buyer: p.buyer || '—'
+        buyer: p.buyer || '—',
+        qualityScore: p.qualityScore || 88,
+        imageUrl: p.imageUrl || getProduceImage(p.name)
       }));
+      return deduplicateAndMerge(localList, remote);
     } catch (e) {
-      console.warn("Falling back to mock lots:", e);
-      return mockLots;
+      console.warn("Falling back to mock lots + local custom lots:", e);
+      return deduplicateAndMerge(localList, mockLots);
     }
   },
   create: async (data, farmerId = 1) => {
-    return fetchJson(`${JAVA_API_URL}/products?farmerId=${farmerId}`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
+    const localId = `LOT-${Date.now().toString().slice(-4)}`;
+    const newLot = {
+      id: localId,
+      crop: data.name || data.crop || 'Produce',
+      quantity: `${data.quantity || 500} kg`,
+      grade: data.grade || 'Grade A',
+      price: `₹${Number(data.price || 2600).toLocaleString()}/qtl`,
+      status: 'Available',
+      created: 'Today',
+      buyer: '—',
+      qualityScore: data.qualityScore || 88,
+      location: data.location || 'Local Farm',
+      imageUrl: data.imageUrl || getProduceImage(data.name || data.crop)
+    };
+    saveStoredLocalLot(newLot);
+
+    try {
+      return await fetchJson(`${JAVA_API_URL}/products?farmerId=${farmerId}`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    } catch (err) {
+      console.warn('Backend offline, registered lot locally:', err);
+      return newLot;
+    }
   }
 };
 
+function getStoredLocalOrders() {
+  try {
+    const raw = localStorage.getItem('agriflow_custom_orders');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredLocalOrder(orderObj) {
+  try {
+    const current = getStoredLocalOrders();
+    const updated = [orderObj, ...current.filter(o => o.id !== orderObj.id)];
+    localStorage.setItem('agriflow_custom_orders', JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Failed to save order locally:', e);
+  }
+}
+
 export const orderService = {
   list: async () => {
+    const localOrders = getStoredLocalOrders();
     try {
       const orders = await fetchJson(`${JAVA_API_URL}/orders`);
-      if (!orders || orders.length === 0) return [mockOrder];
-      return orders.map(o => ({
+      if (!orders || orders.length === 0) {
+        return deduplicateAndMerge(localOrders, [mockOrder]);
+      }
+      const remote = orders.map(o => ({
         id: `ORD-${o.id}`,
         buyer: o.consumer?.name || 'FreshCart Foods',
         crop: o.product?.name || 'Produce',
@@ -203,14 +340,20 @@ export const orderService = {
         date: o.orderDate || 'Today',
         pickupLocation: o.pickupLocation || o.product?.location || 'Panipat, Haryana',
         deliveryLocation: o.deliveryLocation || 'Azadpur Mandi, Delhi',
-        shipmentId: o.shipmentId || 'SHP-001'
+        shipmentId: o.shipmentId || 'SHP-001',
+        imageUrl: o.imageUrl || getProduceImage(o.product?.name)
       }));
+      return deduplicateAndMerge(localOrders, remote);
     } catch (e) {
-      console.warn("Falling back to mock order:", e);
-      return [mockOrder];
+      console.warn("Falling back to mock order + local orders:", e);
+      return deduplicateAndMerge(localOrders, [mockOrder]);
     }
   },
   get: async (id) => {
+    const localOrders = getStoredLocalOrders();
+    const foundLocal = localOrders.find(o => o.id === id);
+    if (foundLocal) return foundLocal;
+
     try {
       const o = await fetchJson(`${JAVA_API_URL}/orders/${id}`);
       return {
@@ -223,22 +366,68 @@ export const orderService = {
         date: o.orderDate || 'Today',
         pickupLocation: o.pickupLocation || o.product?.location || 'Panipat, Haryana',
         deliveryLocation: o.deliveryLocation || 'Azadpur Mandi, Delhi',
-        shipmentId: o.shipmentId || 'SHP-001'
+        shipmentId: o.shipmentId || 'SHP-001',
+        imageUrl: o.imageUrl || getProduceImage(o.product?.name)
       };
     } catch (e) {
       return mockOrder;
     }
   },
   create: async (orderData) => {
-    const params = new URLSearchParams(orderData);
-    return fetchJson(`${JAVA_API_URL}/orders?${params.toString()}`, {
-      method: 'POST'
-    });
+    const orderId = orderData.id || `ORD-${Date.now().toString().slice(-4)}`;
+    const parsedQty = parseInt(String(orderData.quantity || 500).replace(/[^0-9]/g, ''), 10) || 500;
+    const unitPrice = parseFloat(String(orderData.price || '26').replace(/[^0-9.]/g, '')) || 26;
+    const totalAmount = orderData.amount || `₹${Math.round(parsedQty * unitPrice).toLocaleString()}`;
+
+    const newOrder = {
+      id: orderId,
+      buyer: orderData.buyer || 'FreshCart Foods',
+      crop: orderData.crop || 'Produce',
+      quantity: `${parsedQty} kg`,
+      amount: totalAmount,
+      status: 'In transit',
+      date: 'Today',
+      pickupLocation: orderData.pickupLocation || 'Panipat, Haryana',
+      deliveryLocation: orderData.deliveryLocation || 'Ghazipur Mandi, Delhi',
+      shipmentId: orderData.shipmentId || 'SHP-001',
+      imageUrl: orderData.imageUrl || getProduceImage(orderData.crop)
+    };
+
+    saveStoredLocalOrder(newOrder);
+
+    try {
+      const params = new URLSearchParams({
+        consumerId: orderData.consumerId || 1,
+        productId: orderData.productId || 1,
+        quantity: parsedQty,
+        pickupLocation: newOrder.pickupLocation,
+        deliveryLocation: newOrder.deliveryLocation
+      });
+      await fetchJson(`${JAVA_API_URL}/orders?${params.toString()}`, {
+        method: 'POST'
+      });
+    } catch (err) {
+      console.warn('Backend orders offline, registered locally:', err);
+    }
+    return newOrder;
   }
 };
 
 export const marketplaceService = {
   getProducts: async (filters = {}) => {
+    const localLots = getStoredLocalLots().map(l => ({
+      id: l.id,
+      crop: l.crop,
+      grade: l.grade,
+      quantity: typeof l.quantity === 'string' && l.quantity.includes('available') ? l.quantity : `${l.quantity} available`,
+      location: l.location || 'Local Farm',
+      price: l.price,
+      score: l.qualityScore || 88,
+      harvest: 'Harvested recently',
+      accent: (l.crop || '').toLowerCase(),
+      imageUrl: l.imageUrl || getProduceImage(l.crop)
+    }));
+
     try {
       const params = new URLSearchParams();
       if (filters.search) params.append('search', filters.search);
@@ -249,9 +438,14 @@ export const marketplaceService = {
 
       const products = await fetchJson(`${JAVA_API_URL}/marketplace/products?${params.toString()}`);
       if (!products || products.length === 0) {
-        throw new Error("No products found, falling back to mock produce");
+        const merged = deduplicateAndMerge(localLots, mockProduce.map(p => ({ ...p, imageUrl: p.imageUrl || getProduceImage(p.crop) })));
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          return merged.filter(p => p.crop.toLowerCase().includes(q) || (p.location || '').toLowerCase().includes(q));
+        }
+        return merged;
       }
-      return products.map(p => ({
+      const remote = products.map(p => ({
         id: p.id,
         crop: p.name,
         grade: p.grade || 'Grade A',
@@ -260,11 +454,23 @@ export const marketplaceService = {
         price: `₹${p.price}/qtl`,
         score: p.qualityScore || 85,
         harvest: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
-        accent: (p.name || '').toLowerCase()
+        accent: (p.name || '').toLowerCase(),
+        imageUrl: p.imageUrl || getProduceImage(p.name)
       }));
+      const merged = deduplicateAndMerge(localLots, remote);
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        return merged.filter(p => p.crop.toLowerCase().includes(q) || (p.location || '').toLowerCase().includes(q));
+      }
+      return merged;
     } catch (e) {
-      console.warn("Falling back to mock produce:", e);
-      throw e;
+      console.warn("Falling back to mock produce + local lots:", e);
+      const merged = deduplicateAndMerge(localLots, mockProduce.map(p => ({ ...p, imageUrl: p.imageUrl || getProduceImage(p.crop) })));
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        return merged.filter(p => p.crop.toLowerCase().includes(q) || (p.location || '').toLowerCase().includes(q));
+      }
+      return merged;
     }
   }
 };
@@ -278,8 +484,15 @@ export const cropBaselines = {
     demandHistory: [28, 31, 29, 35, 34, 39, 38],
     baseRate: 2600,
     mandi: 'Delhi Azadpur Mandi',
-    hub: 'Nashik APMC',
-    unit: 'qtl'
+    hub: 'Nashik APMC Mandi',
+    unit: 'qtl',
+    regionalHubs: [
+      { name: 'Delhi Azadpur Mandi', distance: 'Local Hub', rateOffset: 0, volume: '420 tonnes', trend: 'up' },
+      { name: 'Nashik APMC Mandi (Lasalgaon)', distance: 'Primary Source (1,150 km)', rateOffset: -220, volume: '890 tonnes', trend: 'up' },
+      { name: 'Pune Gultekdi Market', distance: '1,280 km', rateOffset: -160, volume: '340 tonnes', trend: 'neutral' },
+      { name: 'Delhi Ghazipur Mandi', distance: '26 km', rateOffset: -40, volume: '210 tonnes', trend: 'neutral' },
+      { name: 'Panipat Regional Market', distance: '85 km', rateOffset: -90, volume: '115 tonnes', trend: 'down' }
+    ]
   },
   Potato: {
     crop: 'Potato',
@@ -288,8 +501,15 @@ export const cropBaselines = {
     demandHistory: [45, 48, 46, 52, 50, 55, 53],
     baseRate: 2150,
     mandi: 'Delhi Ghazipur Mandi',
-    hub: 'Agra Mandi',
-    unit: 'qtl'
+    hub: 'Agra APMC Mandi',
+    unit: 'qtl',
+    regionalHubs: [
+      { name: 'Delhi Ghazipur Mandi', distance: 'Local Hub', rateOffset: 0, volume: '380 tonnes', trend: 'up' },
+      { name: 'Agra APMC Mandi', distance: 'Primary Source (210 km)', rateOffset: -180, volume: '750 tonnes', trend: 'up' },
+      { name: 'Delhi Azadpur Mandi', distance: '32 km', rateOffset: 45, volume: '460 tonnes', trend: 'up' },
+      { name: 'Kanpur Anaj Mandi', distance: '440 km', rateOffset: -120, volume: '290 tonnes', trend: 'neutral' },
+      { name: 'Karnal Anaj Mandi', distance: '135 km', rateOffset: -60, volume: '140 tonnes', trend: 'down' }
+    ]
   },
   Tomato: {
     crop: 'Tomato',
@@ -298,8 +518,15 @@ export const cropBaselines = {
     demandHistory: [30, 32, 34, 35, 36, 38, 40],
     baseRate: 1980,
     mandi: 'Panipat Grain Market',
-    hub: 'Kolar APMC',
-    unit: 'qtl'
+    hub: 'Kolar APMC Mandi',
+    unit: 'qtl',
+    regionalHubs: [
+      { name: 'Panipat Grain Market', distance: 'Local Hub', rateOffset: 0, volume: '180 tonnes', trend: 'down' },
+      { name: 'Delhi Azadpur Mandi', distance: '85 km', rateOffset: 120, volume: '510 tonnes', trend: 'up' },
+      { name: 'Kolar APMC Mandi', distance: 'Primary Source (2,200 km)', rateOffset: -280, volume: '620 tonnes', trend: 'down' },
+      { name: 'Madanapalle APMC', distance: '2,150 km', rateOffset: -250, volume: '430 tonnes', trend: 'down' },
+      { name: 'Delhi Ghazipur Mandi', distance: '95 km', rateOffset: 70, volume: '220 tonnes', trend: 'neutral' }
+    ]
   },
   'Green Chilli': {
     crop: 'Green Chilli',
@@ -588,6 +815,114 @@ export const cropBaselines = {
     mandi: 'Nashik APMC Mandi',
     hub: 'Sangli APMC',
     unit: 'qtl'
+  },
+  Papaya: {
+    crop: 'Papaya',
+    category: 'Fruits',
+    priceHistory: [18, 19, 20, 21, 23, 24, 25, 26],
+    demandHistory: [30, 32, 34, 37, 39, 42, 44],
+    baseRate: 1850,
+    mandi: 'Ahmednagar APMC',
+    hub: 'Bengaluru Binny Mandi',
+    unit: 'qtl'
+  },
+  Guava: {
+    crop: 'Guava',
+    category: 'Fruits',
+    priceHistory: [30, 32, 33, 35, 37, 39, 41, 44],
+    demandHistory: [22, 24, 25, 28, 30, 32, 35],
+    baseRate: 3400,
+    mandi: 'Allahabad APMC Mandi',
+    hub: 'Lucknow Mandi',
+    unit: 'qtl'
+  },
+  Pomegranate: {
+    crop: 'Pomegranate',
+    category: 'Fruits',
+    priceHistory: [82, 85, 87, 90, 94, 98, 102, 107],
+    demandHistory: [18, 20, 21, 23, 25, 28, 30],
+    baseRate: 8900,
+    mandi: 'Solapur APMC Mandi',
+    hub: 'Nashik APMC',
+    unit: 'qtl'
+  },
+  Watermelon: {
+    crop: 'Watermelon',
+    category: 'Fruits',
+    priceHistory: [11, 12, 12, 13, 14, 15, 15, 16],
+    demandHistory: [40, 44, 48, 52, 56, 60, 65],
+    baseRate: 1200,
+    mandi: 'Malur APMC Mandi',
+    hub: 'Bengaluru Binny Mandi',
+    unit: 'qtl',
+    regionalHubs: [
+      { name: 'Malur APMC Mandi (Karnataka)', distance: 'Local Hub (Origin)', rateOffset: 0, volume: '380 tonnes', trend: 'up' },
+      { name: 'Bengaluru Binny Mill APMC', distance: '45 km', rateOffset: 80, volume: '520 tonnes', trend: 'up' },
+      { name: 'Koyambedu Wholesale Market (Chennai)', distance: '310 km', rateOffset: 150, volume: '410 tonnes', trend: 'up' },
+      { name: 'Bowenpally APMC Mandi (Hyderabad)', distance: '560 km', rateOffset: 110, volume: '290 tonnes', trend: 'neutral' },
+      { name: 'Mumbai Vashi APMC Mandi', distance: '980 km', rateOffset: 220, volume: '650 tonnes', trend: 'up' },
+      { name: 'Delhi Ghazipur Fruit Mandi', distance: '2,100 km', rateOffset: 280, volume: '480 tonnes', trend: 'up' }
+    ]
+  },
+  Lemon: {
+    crop: 'Lemon',
+    category: 'Fruits',
+    priceHistory: [42, 45, 44, 49, 53, 57, 61, 66],
+    demandHistory: [25, 27, 28, 31, 33, 36, 38],
+    baseRate: 4600,
+    mandi: 'Tenali APMC Mandi',
+    hub: 'Nellore APMC',
+    unit: 'qtl'
+  },
+  Pineapple: {
+    crop: 'Pineapple',
+    category: 'Fruits',
+    priceHistory: [29, 30, 31, 32, 34, 35, 37, 39],
+    demandHistory: [20, 22, 23, 25, 26, 28, 30],
+    baseRate: 3100,
+    mandi: 'Vazhakulam Pineapple Market',
+    hub: 'Siliguri APMC',
+    unit: 'qtl'
+  },
+  Strawberry: {
+    crop: 'Strawberry',
+    category: 'Fruits',
+    priceHistory: [160, 168, 172, 180, 188, 195, 205, 215],
+    demandHistory: [12, 14, 15, 17, 18, 20, 22],
+    baseRate: 18500,
+    mandi: 'Mahabaleshwar APMC',
+    hub: 'Pune APMC',
+    unit: 'qtl'
+  },
+  'Dragon Fruit': {
+    crop: 'Dragon Fruit',
+    category: 'Fruits',
+    priceHistory: [135, 140, 144, 150, 158, 165, 172, 180],
+    demandHistory: [10, 12, 13, 15, 16, 18, 20],
+    baseRate: 14500,
+    mandi: 'Kutch APMC Mandi',
+    hub: 'Surat APMC',
+    unit: 'qtl'
+  },
+  Kiwi: {
+    crop: 'Kiwi',
+    category: 'Fruits',
+    priceHistory: [150, 155, 158, 164, 170, 178, 185, 192],
+    demandHistory: [10, 11, 12, 14, 15, 16, 18],
+    baseRate: 16000,
+    mandi: 'Arunachal Ziro Mandi',
+    hub: 'Delhi Azadpur Mandi',
+    unit: 'qtl'
+  },
+  'Custard Apple': {
+    crop: 'Custard Apple',
+    category: 'Fruits',
+    priceHistory: [48, 51, 53, 57, 60, 64, 68, 72],
+    demandHistory: [15, 17, 18, 20, 22, 24, 26],
+    baseRate: 5500,
+    mandi: 'Beed APMC Mandi',
+    hub: 'Aurangabad Mandi',
+    unit: 'qtl'
   }
 };
 
@@ -613,31 +948,74 @@ export const mandiLocations = [
   'Unjha APMC Mandi'
 ];
 
-function detectCropFromPixels(pixels, fileName = '') {
+function detectCropFromPixels(pixels, fileName = '', aspectRatio = 1.0) {
   const lowerName = (fileName || '').toLowerCase();
-  if (lowerName.includes('onion')) return 'Onion';
-  if (lowerName.includes('potato')) return 'Potato';
-  if (lowerName.includes('tomato')) return 'Tomato';
-  if (lowerName.includes('wheat') || lowerName.includes('grain')) return 'Wheat';
-  if (lowerName.includes('rice') || lowerName.includes('paddy')) return 'Basmati Rice';
-  if (lowerName.includes('chilli') || lowerName.includes('chili')) return lowerName.includes('red') ? 'Red Chilli' : 'Green Chilli';
-  if (lowerName.includes('carrot')) return 'Carrot';
-  if (lowerName.includes('apple')) return 'Apple';
-  if (lowerName.includes('banana')) return 'Banana';
-  if (lowerName.includes('mango')) return 'Mango';
-  if (lowerName.includes('garlic')) return 'Garlic';
-  if (lowerName.includes('ginger')) return 'Ginger';
-  if (lowerName.includes('mustard')) return 'Mustard';
-  if (lowerName.includes('brinjal') || lowerName.includes('eggplant')) return 'Brinjal';
-  if (lowerName.includes('cabbage') || lowerName.includes('cauliflower')) return 'Cabbage';
 
-  let redCount = 0;
-  let purpleOnionCount = 0;
-  let yellowGoldenCount = 0;
-  let earthyPotatoCount = 0;
-  let greenLeafyCount = 0;
+  const fruitKeywords = [
+    ['apple', 'Apple'],
+    ['banana', 'Banana'],
+    ['mango', 'Mango'],
+    ['orange', 'Orange'],
+    ['mosambi', 'Orange'],
+    ['citrus', 'Orange'],
+    ['grape', 'Grapes'],
+    ['papaya', 'Papaya'],
+    ['watermelon', 'Watermelon'],
+    ['guava', 'Guava'],
+    ['strawberry', 'Strawberry'],
+    ['pomegranate', 'Pomegranate'],
+    ['lemon', 'Lemon'],
+    ['lime', 'Lemon'],
+    ['onion', 'Onion'],
+    ['potato', 'Potato'],
+    ['tomato', 'Tomato'],
+    ['wheat', 'Wheat'],
+    ['grain', 'Wheat'],
+    ['rice', 'Basmati Rice'],
+    ['paddy', 'Basmati Rice'],
+    ['chilli', 'Green Chilli'],
+    ['chili', 'Green Chilli'],
+    ['mirchi', 'Green Chilli'],
+    ['carrot', 'Carrot'],
+    ['garlic', 'Garlic'],
+    ['ginger', 'Ginger'],
+    ['mustard', 'Mustard'],
+    ['brinjal', 'Brinjal'],
+    ['eggplant', 'Brinjal'],
+    ['cabbage', 'Cabbage'],
+    ['cauliflower', 'Cauliflower'],
+    ['cotton', 'Cotton'],
+    ['sugarcane', 'Sugarcane'],
+    ['cumin', 'Cumin'],
+    ['pulse', 'Pulses (Dal/Gram)'],
+    ['plus', 'Pulses (Dal/Gram)'],
+    ['dal', 'Pulses (Dal/Gram)'],
+    ['dhal', 'Pulses (Dal/Gram)'],
+    ['moong', 'Moong Dal'],
+    ['tur', 'Tur (Arhar)'],
+    ['arhar', 'Tur (Arhar)'],
+    ['chana', 'Chana (Gram)'],
+    ['gram', 'Chana (Gram)'],
+    ['soyabean', 'Soyabean']
+  ];
+
+  for (const [kw, label] of fruitKeywords) {
+    if (lowerName.includes(kw)) return label;
+  }
+
+  let redAppleCount = 0;
+  let redTomatoCount = 0;
+  let yellowBananaCount = 0;
+  let yellowMangoCount = 0;
+  let orangeCitrusCount = 0;
   let orangeCarrotCount = 0;
+  let greenGrapesCount = 0;
+  let greenLeafyCount = 0;
+  let purpleOnionCount = 0;
   let violetBrinjalCount = 0;
+  let earthyPotatoCount = 0;
+  let goldenWheatCount = 0;
+  let granularPulseCount = 0;
   let validPixels = 0;
 
   for (let i = 0; i < pixels.length; i += 4) {
@@ -649,31 +1027,60 @@ function detectCropFromPixels(pixels, fileName = '') {
     if (brightness < 25) continue;
     validPixels++;
 
-    if (r > 140 && r > g * 1.35 && r > b * 1.4) {
-      redCount++;
-    } else if (r > 100 && b > 75 && r > g * 1.1 && b > g * 0.9) {
-      purpleOnionCount++;
-    } else if (r > 150 && g > 130 && b < 100) {
-      yellowGoldenCount++;
+    if (r > 140 && r > g * 1.35 && r > b * 1.35) {
+      if (r > 175 && g < 75 && b < 70) {
+        redTomatoCount++;
+      } else {
+        redAppleCount++;
+      }
+    } else if (r > 180 && 85 < g && g < 155 && b < 75 && (r - g) > 35) {
+      if (aspectRatio > 1.35 || aspectRatio < 0.75) {
+        orangeCarrotCount++;
+      } else {
+        orangeCitrusCount++;
+      }
+    } else if (r > 160 && g > 135 && b < 120) {
+      if (aspectRatio > 1.4 || aspectRatio < 0.7) {
+        yellowBananaCount++;
+      } else if ((r - g) > 28 && r > 180) {
+        yellowMangoCount++;
+      } else if (r > 190 && g > 170 && b < 95) {
+        yellowBananaCount++;
+      } else {
+        goldenWheatCount++;
+        granularPulseCount++;
+      }
+    } else if (g > 95 && g > r * 1.15 && g > b * 1.15) {
+      if (r > 65 && b > 45 && brightness > 100) {
+        greenGrapesCount++;
+      } else {
+        greenLeafyCount++;
+      }
+    } else if (b > 65 && r > 55 && (b + r) > g * 2.0) {
+      if (r > b * 1.15) {
+        purpleOnionCount++;
+      } else {
+        violetBrinjalCount++;
+      }
     } else if (110 < r && r < 200 && 90 < g && g < 170 && 50 < b && b < 130 && Math.abs(r - g) < 45 && b < g) {
       earthyPotatoCount++;
-    } else if (g > 100 && g > r * 1.15 && g > b * 1.2) {
-      greenLeafyCount++;
-    } else if (r > 180 && 80 < g && g < 150 && b < 65 && (r - g) > 50) {
-      orangeCarrotCount++;
-    } else if (b > 70 && r > 50 && g < 60 && (b + r) > g * 2.2) {
-      violetBrinjalCount++;
     }
   }
 
   const counts = {
-    'Tomato': redCount,
-    'Onion': purpleOnionCount + Math.floor(yellowGoldenCount * 0.35),
-    'Potato': earthyPotatoCount,
-    'Wheat': Math.floor(yellowGoldenCount * 0.65),
-    'Green Chilli': greenLeafyCount,
+    'Apple': redAppleCount,
+    'Tomato': redTomatoCount,
+    'Banana': yellowBananaCount,
+    'Mango': yellowMangoCount,
+    'Orange': orangeCitrusCount,
     'Carrot': orangeCarrotCount,
-    'Brinjal': violetBrinjalCount
+    'Grapes': greenGrapesCount,
+    'Green Chilli': greenLeafyCount,
+    'Onion': purpleOnionCount,
+    'Brinjal': violetBrinjalCount,
+    'Potato': earthyPotatoCount,
+    'Wheat': Math.floor(goldenWheatCount * 0.4),
+    'Pulses (Dal/Gram)': Math.floor(granularPulseCount * 0.6)
   };
 
   let maxCrop = 'Harvest Produce';
@@ -686,7 +1093,7 @@ function detectCropFromPixels(pixels, fileName = '') {
   }
 
   if (maxCount < validPixels * 0.08) {
-    if (yellowGoldenCount > redCount && yellowGoldenCount > greenLeafyCount) return 'Wheat / Grain';
+    if (yellowBananaCount + yellowMangoCount > redAppleCount) return 'Banana / Mango';
     return 'Harvest Produce';
   }
 
@@ -712,7 +1119,11 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
           const totalPixels = size * size;
 
           const fileName = imageFile?.name || '';
-          const detectedCrop = detectCropFromPixels(pixels, fileName || cropNameHint);
+          const aspect = (img.naturalWidth || img.width || 120) / Math.max(1, (img.naturalHeight || img.height || 120));
+          let detectedCrop = detectCropFromPixels(pixels, fileName || cropNameHint, aspect);
+          if (cropNameHint && cropNameHint !== 'Produce' && cropNameHint !== 'Harvest Produce') {
+            detectedCrop = cropNameHint;
+          }
 
           let totalBrightness = 0;
           let decayPixels = 0;
@@ -778,7 +1189,14 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
           const score = Math.round(Math.max(15, Math.min(98, rawScore)));
 
           const grade = score >= 82 ? 'A' : score >= 65 ? 'B' : 'C';
-          const shelfLife = grade === 'A' ? 14 : grade === 'B' ? 8 : 3;
+          const fruitShelfLives = {
+            'Apple': 28, 'Orange': 21, 'Potato': 35, 'Onion': 45, 'Wheat': 120,
+            'Pulses (Dal/Gram)': 180, 'Banana': 6, 'Mango': 8, 'Tomato': 9,
+            'Grapes': 7, 'Green Chilli': 10, 'Carrot': 14, 'Brinjal': 6
+          };
+          const baseShelf = fruitShelfLives[detectedCrop] || 14;
+          const shelfFactor = grade === 'A' ? 1.0 : grade === 'B' ? 0.55 : 0.25;
+          const shelfLife = Math.max(2, Math.round(baseShelf * shelfFactor));
 
           let description = '';
           if (score >= 82) {
@@ -810,7 +1228,7 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
           });
         } catch (err) {
           resolve({
-            produce_name: 'Harvest Produce',
+            produce_name: cropNameHint || 'Harvest Produce',
             grade: 'A',
             quality_score: 88,
             score: 88,
@@ -828,7 +1246,7 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
       };
       img.onerror = () => {
         resolve({
-          produce_name: 'Harvest Produce',
+          produce_name: cropNameHint || 'Harvest Produce',
           grade: 'A',
           quality_score: 88,
           score: 88,
@@ -839,7 +1257,7 @@ export async function analyzeImageWithCanvas(imageFile, cropNameHint = '') {
           damaged_percentage: 9,
           rotten_percentage: 5,
           imageUrl: dataUrl,
-          description: 'Analyzed produce: Good coloration and texture.',
+          description: 'Standard produce visual evaluation.',
           defects: { good_produce: 86, damaged: 9, rotten: 5 }
         });
       };
@@ -861,18 +1279,28 @@ export const aiService = {
         // Try backend FastAPI first
         const formData = new FormData();
         formData.append('image', imageFile);
+        if (cropName && cropName !== 'Produce' && cropName !== 'Harvest Produce') {
+          formData.append('crop_hint', cropName);
+        }
+
         const res = await fetch(`${AI_API_URL}/quality/analyze`, {
           method: 'POST',
           body: formData
         });
         if (res.ok) {
           const data = await res.json();
+          const finalCrop = (data.produce_name && data.produce_name !== 'Harvest Produce')
+            ? data.produce_name
+            : (clientAnalysis.produce_name && clientAnalysis.produce_name !== 'Harvest Produce')
+              ? clientAnalysis.produce_name
+              : (cropName || 'Produce');
+
           return {
-            produce_name: data.produce_name || cropName || 'Produce',
+            produce_name: finalCrop,
             grade: data.grade || clientAnalysis.grade || 'A',
             quality_score: Math.round(data.quality_score ?? data.score ?? clientAnalysis.quality_score ?? 87),
             score: data.score ?? data.quality_score ?? clientAnalysis.score ?? 87,
-            confidence: data.confidence ?? 0.94,
+            confidence: data.confidence ?? clientAnalysis.confidence ?? 0.95,
             freshness_score: Math.round(data.score ?? data.quality_score ?? clientAnalysis.freshness_score ?? 87),
             shelf_life_days: data.shelf_life_days ?? clientAnalysis.shelf_life_days ?? 14,
             good_percentage: data.good_percentage ?? clientAnalysis.good_percentage ?? 85,
@@ -917,7 +1345,7 @@ export const aiService = {
           }
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return {
       produce_name: cropName || 'Onion',
@@ -940,6 +1368,35 @@ export const aiService = {
     };
   },
 
+  searchCropRate: async (cropName, predictionLength = 7) => {
+    try {
+      const data = await fetchJson(`${AI_API_URL}/prediction/crop-rate?crop=${encodeURIComponent(cropName)}&days=${predictionLength}`);
+      if (data && data.crop) {
+        cropBaselines[data.crop] = {
+          crop: data.crop,
+          category: data.category || 'Fruits',
+          priceHistory: data.historical_prices || [50, 52, 54, 56, 58, 60, 62],
+          demandHistory: [30, 32, 35, 38, 40, 42, 45],
+          baseRate: data.base_rate,
+          mandi: data.mandi,
+          hub: data.hub,
+          unit: data.unit || 'qtl'
+        };
+
+        return {
+          ...data,
+          baseRate: data.base_rate,
+          projectedPrice: data.projected_price,
+          changePct: data.change_pct,
+          crop: data.crop
+        };
+      }
+    } catch (e) {
+      console.warn('crop-rate API lookup failed, falling back:', e);
+    }
+    return aiService.getPriceForecast(cropName, predictionLength);
+  },
+
   getPriceForecast: async (target = 'Onion', predictionLength = 7) => {
     let values = [38, 43, 41, 49, 53, 57, 62, 68];
     let cropName = 'Onion';
@@ -947,15 +1404,53 @@ export const aiService = {
 
     if (typeof target === 'string') {
       cropName = target;
+
+      // Try dynamic backend search first for custom / live rates
+      try {
+        const live = await fetchJson(`${AI_API_URL}/prediction/crop-rate?crop=${encodeURIComponent(target)}&days=${predictionLength}`);
+        if (live && live.crop) {
+          cropBaselines[live.crop] = {
+            crop: live.crop,
+            category: live.category || 'Fruits',
+            priceHistory: live.historical_prices || [50, 52, 54, 56, 58, 60, 62],
+            demandHistory: [30, 32, 35, 38, 40, 42, 45],
+            baseRate: live.base_rate,
+            mandi: live.mandi,
+            hub: live.hub,
+            unit: live.unit || 'qtl'
+          };
+          return {
+            ...live,
+            baseRate: live.base_rate,
+            projectedPrice: live.projected_price,
+            changePct: live.change_pct,
+            crop: live.crop
+          };
+        }
+      } catch (e) { }
+
       // Case-insensitive lookup or alias
       const matchedKey = Object.keys(cropBaselines).find(
         k => k.toLowerCase() === target.toLowerCase() ||
-             target.toLowerCase().includes(k.toLowerCase()) ||
-             k.toLowerCase().includes(target.toLowerCase())
+          target.toLowerCase().includes(k.toLowerCase()) ||
+          k.toLowerCase().includes(target.toLowerCase())
       );
-      const config = matchedKey ? cropBaselines[matchedKey] : cropBaselines.Onion;
+      const isFruit = /(fruit|berry|melon|apple|citrus|avocado|papaya|guava|pomegranate|mango|banana|plum|peach|grape|litchi|kiwi|cherry|pear)/i.test(target);
+      const isSpice = /(spice|chilli|mirch|pepper|clove|cumin|jeera|cardamom|turmeric)/i.test(target);
+      const dynamicRate = isSpice ? 14500 : isFruit ? 4800 : 2600;
+      const config = matchedKey ? cropBaselines[matchedKey] : {
+        crop: target,
+        category: isSpice ? 'Spices & Cash Crops' : isFruit ? 'Fruits' : 'Vegetables',
+        priceHistory: [45, 47, 49, 52, 55, 57, 60],
+        demandHistory: [25, 27, 29, 32, 35, 37, 40],
+        baseRate: dynamicRate,
+        mandi: `Regional APMC Mandi (${target})`,
+        hub: `District Wholesale Market`,
+        unit: 'qtl'
+      };
       values = config.priceHistory || [40, 42, 45, 48, 50, 52, 55];
-      baseRate = config.baseRate || 2500;
+      baseRate = config.baseRate || dynamicRate;
+      if (matchedKey) cropName = matchedKey;
     } else if (Array.isArray(target)) {
       values = target;
     }
@@ -981,7 +1476,9 @@ export const aiService = {
         crop: cropName,
         baseRate,
         projectedPrice,
-        changePct: Number(changePct)
+        changePct: Number(changePct),
+        mandi: cropBaselines[cropName]?.mandi || 'Regional APMC Mandi',
+        hub: cropBaselines[cropName]?.hub || 'District Wholesale Market'
       };
     } catch (err) {
       console.warn('AI price forecast fallback:', err);
@@ -1011,8 +1508,8 @@ export const aiService = {
       cropName = target;
       const matchedKey = Object.keys(cropBaselines).find(
         k => k.toLowerCase() === target.toLowerCase() ||
-             target.toLowerCase().includes(k.toLowerCase()) ||
-             k.toLowerCase().includes(target.toLowerCase())
+          target.toLowerCase().includes(k.toLowerCase()) ||
+          k.toLowerCase().includes(target.toLowerCase())
       );
       const config = matchedKey ? cropBaselines[matchedKey] : cropBaselines.Onion;
       values = config.demandHistory || [30, 32, 35, 38, 40, 42, 45];
@@ -1125,7 +1622,7 @@ export const logisticsService = {
 export const trackingService = {
   subscribe: (shipmentId, callbacks) => {
     const socket = io(SOCKET_URL);
-    
+
     socket.emit('subscribeToShipment', shipmentId);
     socket.emit('join:shipment', shipmentId);
 
@@ -1133,7 +1630,7 @@ export const trackingService = {
     if (callbacks.onRouteUpdate) socket.on('route:updated', callbacks.onRouteUpdate);
     if (callbacks.onStatusUpdate) socket.on('shipment:status', callbacks.onStatusUpdate);
     if (callbacks.onDeviation) socket.on('route:deviation', callbacks.onDeviation);
-    
+
     return () => {
       socket.disconnect();
     };

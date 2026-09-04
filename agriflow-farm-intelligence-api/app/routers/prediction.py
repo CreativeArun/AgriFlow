@@ -1,10 +1,18 @@
 from fastapi import APIRouter
+from typing import Optional
+
+from fastapi import APIRouter, Query
 
 from app.schemas.prediction import (
+    CropRateResponse,
     ForecastRequest,
     ForecastResponse,
 )
 from app.services.price_service import predict_price
+from app.services.price_service import (
+    get_crop_rate_and_forecast,
+    predict_price,
+)
 from app.services.demand_service import predict_demand
 
 
@@ -38,3 +46,18 @@ def forecast_demand_endpoint(
     Forecast future agricultural demand using Chronos-Bolt.
     """
     return predict_demand(request)
+
+
+@router.get(
+    "/crop-rate",
+    response_model=CropRateResponse,
+)
+def search_crop_rate(
+    crop: str = Query(..., description="Name of fruit, crop, or produce to search"),
+    days: int = Query(7, ge=1, le=30, description="Forecast horizon in days"),
+):
+    """
+    Search actual Mandi benchmark rates for any fruit or crop,
+    and generate Chronos-Bolt price projection.
+    """
+    return get_crop_rate_and_forecast(crop, prediction_length=days)

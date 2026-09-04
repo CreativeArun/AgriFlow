@@ -30,3 +30,18 @@ class ForecastResponse(BaseModel):
     model: str
     prediction_length: int
     forecasts: list[ForecastPoint]
+
+
+class CropRateResponse(BaseModel):
+    crop: str
+    category: str
+    mandi: str
+    hub: str
+    base_rate: float
+    unit: str
+    projected_price: float
+    change_pct: float
+    recommendation: str
+    historical_prices: list[float]
+    forecasts: list[ForecastPoint]
+    model: str

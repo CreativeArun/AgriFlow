@@ -52,15 +52,19 @@ def _parse_model_json(raw_result: str) -> dict:
     return result
 
 
-def analyze_quality(image_data_url: str) -> QualityResponse:
+def analyze_quality(
+    image_data_url: str,
+    crop_hint: str = "",
+    filename: str = "",
+) -> QualityResponse:
     """
-    Analyze agricultural produce using the hosted VLM.
+    Analyze agricultural produce using the hosted VLM or local computer vision.
 
     No model is trained or loaded locally.
     """
 
     try:
-        raw_result = analyze_image(image_data_url)
+        raw_result = analyze_image(image_data_url, crop_hint=crop_hint, filename=filename)
     except Exception as exc:
         raise HTTPException(
             status_code=502,

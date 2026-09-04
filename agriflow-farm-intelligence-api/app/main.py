@@ -9,7 +9,7 @@ from app.routers.agriculture import router as agriculture_router
 
 
 app = FastAPI(
-    title="Farm Intelligence API",
+    title="AgriFlow Farm Intelligence API",
     description="AI and ML services for AgriFlow",
     version="1.0.0",
 )

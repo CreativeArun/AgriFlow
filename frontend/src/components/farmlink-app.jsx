@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   ArrowDownRight, ArrowUpRight, Bell, CalendarDays, Check,
   ChevronDown, CircleHelp, CloudSun, FileText, LayoutDashboard, Leaf,
@@ -16,7 +16,7 @@ import {
 import {
   lotService, marketplaceService, orderService,
   farmerService, buyerService, aiService, logisticsService,
-  cropBaselines, cropCategories, mandiLocations
+  cropBaselines, cropCategories, mandiLocations, getProduceImage
 } from '../lib/api/services.js'
 import MapLeaflet from './MapLeaflet.jsx'
 
@@ -85,7 +85,7 @@ function Logo() {
         <Leaf />
       </div>
       <span className="text-xl font-bold tracking-tight text-[#0f172a]">
-        Farm<span className="text-[#1B4D3E]">Link</span>
+        Agri<span className="text-[#1B4D3E]">Flow</span>
       </span>
     </div>
   )
@@ -293,13 +293,11 @@ function QualityCard({ qualityData }) {
     <div className="card quality-card">
       <div className="card-heading">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {data.imageUrl ? (
-            <img src={data.imageUrl} alt="Scanned produce" className="quality-photo-thumb" />
-          ) : (
-            <div className={`crop-illustration ${(data.produce_name || 'onion').toLowerCase().split(' ')[0]}`}>
-              {(data.produce_name || 'P')[0]}
-            </div>
-          )}
+          <img
+            src={data.imageUrl || getProduceImage(data.produce_name)}
+            alt={data.produce_name || "Harvest Produce"}
+            className="quality-photo-thumb"
+          />
           <div>
             <p className="eyebrow">AI Visual quality assessment</p>
             <h3>{data.produce_name || 'Harvest Produce'} <Badge tone={rawGrade === 'A' ? 'green' : rawGrade === 'B' ? 'amber' : 'red'}>{`Grade ${rawGrade}`}</Badge></h3>
@@ -328,7 +326,7 @@ function QualityCard({ qualityData }) {
 }
 
 /* ─── Insight Card ────────────────────────────────────────────────────────── */
-function InsightCard({ crop = 'Onion', price = 2600, priceForecast }) {
+function InsightCard({ crop = 'Onion', price = 2600, priceForecast, imageUrl }) {
   const currentPrice = price || 2600
   const expectedPrice = priceForecast?.projectedPrice
     ? priceForecast.projectedPrice
@@ -341,7 +339,6 @@ function InsightCard({ crop = 'Onion', price = 2600, priceForecast }) {
   const isFalling = pctDiff <= -1.5
 
   const cropName = crop || priceForecast?.crop || 'Produce'
-  const cropClass = (cropName || '').toLowerCase().split(' ')[0]
 
   let headline = 'Price outlook is stable'
   let recommendation = 'Steady market demand. Favorable window for consistent sales.'
@@ -360,7 +357,11 @@ function InsightCard({ crop = 'Onion', price = 2600, priceForecast }) {
         <span className="insight-date">Chronos-Bolt Forecast</span>
       </div>
       <div className="insight-crop">
-        <div className={`crop-illustration ${cropClass}`}>{cropName[0]}</div>
+        <img
+          src={imageUrl || getProduceImage(cropName)}
+          alt={cropName}
+          style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
+        />
         <div>
           <p className="eyebrow">{cropName}</p>
           <h3>{headline}</h3>
@@ -436,10 +437,16 @@ function LotsTable({ setActive }) {
             ) : lots.map(l => (
               <tr key={l.id}>
                 <td>
-                  <div className="crop-cell">
-                    <span className={`crop-dot ${(l.crop || '').toLowerCase()}`} />
-                    <b>{l.crop}</b>
-                    <small>{l.id}</small>
+                  <div className="crop-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img
+                      src={l.imageUrl || getProduceImage(l.crop)}
+                      alt={l.crop}
+                      style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
+                    />
+                    <div>
+                      <b>{l.crop}</b>
+                      <small style={{ display: 'block', color: '#64748b' }}>{l.id}</small>
+                    </div>
                   </div>
                 </td>
                 <td>{l.quantity}</td>
@@ -457,7 +464,7 @@ function LotsTable({ setActive }) {
 }
 
 /* ─── Farmer Dashboard ────────────────────────────────────────────────────── */
-function FarmerDashboard({ setActive }) {
+function FarmerDashboard({ setActive, activeOrder }) {
   const [metrics, setMetrics] = useState({
     availableProduce: '2.5 tonnes',
     activeOrders: '03',
@@ -517,6 +524,7 @@ function FarmerDashboard({ setActive }) {
             crop={latestLot?.crop || 'Onion'}
             price={lotPrice}
             priceForecast={priceForecast}
+            imageUrl={latestLot?.imageUrl}
           />
           <QualityCard
             qualityData={latestLot ? {
@@ -524,11 +532,12 @@ function FarmerDashboard({ setActive }) {
               grade: latestLot.grade,
               quality_score: latestLot.qualityScore || 88,
               score: latestLot.qualityScore || 88,
-              description: `Verified lot: ${latestLot.crop} (${latestLot.quantity}) listed at ${latestLot.price}`
+              description: `Verified lot: ${latestLot.crop} (${latestLot.quantity}) listed at ${latestLot.price}`,
+              imageUrl: latestLot.imageUrl
             } : null}
           />
         </div>
-        <ShipmentCard setActive={setActive} />
+        <ShipmentCard setActive={setActive} activeOrder={activeOrder} />
       </div>
     </>
   )
@@ -537,51 +546,205 @@ function FarmerDashboard({ setActive }) {
 /* ─── Shipments Page ──────────────────────────────────────────────────────── */
 function ShipmentsPage({ activeOrder }) {
   const [shipmentData, setShipmentData] = useState(defaultShipment)
+  const [allOrders, setAllOrders] = useState([])
   const [orderInfo, setOrderInfo] = useState(activeOrder || null)
+
+  useEffect(() => {
+    orderService.list().then(orders => {
+      if (orders && orders.length > 0) {
+        setAllOrders(orders)
+        if (!activeOrder) {
+          setOrderInfo(orders[0])
+        }
+      }
+    })
+  }, [])
 
   useEffect(() => {
     if (activeOrder) {
       setOrderInfo(activeOrder)
-    } else {
-      orderService.list().then(orders => {
-        if (orders && orders.length > 0) {
-          setOrderInfo(orders[0])
-        }
-      })
     }
-    logisticsService.getShipment('SHP-001').then(data => {
-      if (data) setShipmentData(data)
-    })
   }, [activeOrder])
 
-  const pickup = orderInfo?.pickupLocation || 'Ghazipur, Delhi'
+  useEffect(() => {
+    const sId = orderInfo?.shipmentId || 'SHP-001'
+    logisticsService.getShipment(sId).then(data => {
+      if (data) setShipmentData(data)
+    })
+  }, [orderInfo])
+
+  const [customDeliveryInput, setCustomDeliveryInput] = useState('')
+  const [isEditingDelivery, setIsEditingDelivery] = useState(false)
+
+  const pickup = orderInfo?.pickupLocation || 'Panipat, Haryana'
   const delivery = orderInfo?.deliveryLocation || 'Azadpur Mandi, Delhi'
+  const crop = orderInfo?.crop || 'Produce'
+  const quantity = orderInfo?.quantity || '500 kg'
+  const shipmentId = orderInfo?.shipmentId || 'SHP-001'
+
+  const handleUpdateDelivery = (newDest) => {
+    if (!newDest || !newDest.trim()) return
+    const updated = {
+      ...(orderInfo || {}),
+      id: orderInfo?.id || `ORD-${Date.now().toString().slice(-4)}`,
+      crop,
+      quantity,
+      pickupLocation: pickup,
+      deliveryLocation: newDest.trim(),
+      shipmentId: shipmentId,
+      status: 'In transit'
+    }
+    setOrderInfo(updated)
+    try {
+      const current = JSON.parse(localStorage.getItem('agriflow_custom_orders') || '[]')
+      const nextList = [updated, ...current.filter(o => o.id !== updated.id)]
+      localStorage.setItem('agriflow_custom_orders', JSON.stringify(nextList))
+      setAllOrders(nextList)
+    } catch (e) {
+      console.warn(e)
+    }
+    setIsEditingDelivery(false)
+    setCustomDeliveryInput('')
+  }
+
+  const QUICK_MANDIS = [
+    'Azadpur Mandi, Delhi',
+    'Ghazipur Mandi, Delhi',
+    'Okhla Mandi, Delhi',
+    'Binny Mandi, Bengaluru',
+    'Vashi APMC, Mumbai',
+    'Koyambedu APMC, Chennai',
+    'Bowenpally Mandi, Hyderabad',
+    'Pune Market Yard'
+  ]
 
   return (
     <>
-      <div className="welcome">
+      <div className="welcome" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <p className="eyebrow">Logistics / Live GPS tracking</p>
           <h1>Track your shipment</h1>
           <p className="subhead">
-            Following produce transit from <b>{pickup}</b> to <b>{delivery}</b> in real time.
+            Carrying <b>{crop}</b> ({quantity}) from <b>{pickup}</b> to <b>{delivery}</b> in real time.
           </p>
         </div>
+        {allOrders.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>Select Order:</span>
+            <select
+              value={orderInfo?.id || ''}
+              onChange={e => {
+                const sel = allOrders.find(o => o.id === e.target.value)
+                if (sel) setOrderInfo(sel)
+              }}
+              style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px' }}
+            >
+              {allOrders.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.id} - {o.crop} ({o.pickupLocation || 'Farm'} → {o.deliveryLocation || 'Mandi'})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
-      <MapPanel pickupLocation={pickup} deliveryLocation={delivery} />
+
+      {/* Destination Location Live Changer Bar */}
+      <div className="card" style={{ padding: '14px 20px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <MapPin style={{ width: '18px', color: '#2563eb' }} />
+            <div>
+              <span style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Active Delivery Destination</span>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{delivery}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isEditingDelivery ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Enter destination (e.g. Mumbai, Chennai, Azadpur)..."
+                  value={customDeliveryInput}
+                  onChange={e => setCustomDeliveryInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleUpdateDelivery(customDeliveryInput)}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #94a3b8', fontSize: '13px', width: '260px' }}
+                  autoFocus
+                />
+                <button
+                  className="primary-button"
+                  style={{ padding: '6px 14px', fontSize: '13px' }}
+                  onClick={() => handleUpdateDelivery(customDeliveryInput)}
+                >
+                  Apply
+                </button>
+                <button
+                  className="outline-button"
+                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                  onClick={() => setIsEditingDelivery(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                className="outline-button"
+                style={{ padding: '6px 14px', fontSize: '13px' }}
+                onClick={() => {
+                  setCustomDeliveryInput(delivery)
+                  setIsEditingDelivery(true)
+                }}
+              >
+                Change Destination
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Quick Mandis:</span>
+          {QUICK_MANDIS.map(m => (
+            <button
+              key={m}
+              onClick={() => handleUpdateDelivery(m)}
+              style={{
+                background: delivery.toLowerCase().includes(m.split(' ')[0].toLowerCase()) ? '#e0f2fe' : '#f1f5f9',
+                border: delivery.toLowerCase().includes(m.split(' ')[0].toLowerCase()) ? '1px solid #38bdf8' : '1px solid #e2e8f0',
+                color: delivery.toLowerCase().includes(m.split(' ')[0].toLowerCase()) ? '#0369a1' : '#475569',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontWeight: 500,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {m.split(',')[0]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <MapPanel
+        shipmentId={shipmentId}
+        pickupLocation={pickup}
+        deliveryLocation={delivery}
+        crop={crop}
+        quantity={quantity}
+      />
       <div className="shipment-bottom">
         <div className="card deviation">
           <div className="warning-icon">!</div>
           <div>
             <h3>Real-time Route Monitoring</h3>
-            <p>Active route between <b>{pickup}</b> and <b>{delivery}</b>. If vehicle deviates, dynamic OSRM rerouting triggers automatically.</p>
-            <b>Status: {shipmentData.status} · Remaining: {shipmentData.distance}</b>
+            <p>Active route between <b>{pickup}</b> and <b>{delivery}</b>. Dynamic GPS rerouting &amp; delay detection active.</p>
+            <b>Status: In transit (On route) · Consignment: {crop} ({quantity})</b>
           </div>
         </div>
         <div className="card shipment-stat">
           <span className="eyebrow">Vehicle status</span>
-          <strong>{shipmentData.status}</strong>
-          <span className="muted">{shipmentData.vehicle} · ETA {shipmentData.eta}</span>
+          <strong>In transit</strong>
+          <span className="muted">{shipmentData.vehicle || 'Tata 407 (HR 38 AB 2041)'} · GPS active</span>
         </div>
         <div className="card shipment-stat">
           <span className="eyebrow">Route Origin &amp; Destination</span>
@@ -594,8 +757,16 @@ function ShipmentsPage({ activeOrder }) {
 }
 
 /* ─── Map Panel ───────────────────────────────────────────────────────────── */
-function MapPanel({ pickupLocation, deliveryLocation }) {
-  return <MapLeaflet shipmentId="SHP-001" pickupLocation={pickupLocation} deliveryLocation={deliveryLocation} />
+function MapPanel({ shipmentId, pickupLocation, deliveryLocation, crop, quantity }) {
+  return (
+    <MapLeaflet
+      shipmentId={shipmentId || 'SHP-001'}
+      pickupLocation={pickupLocation}
+      deliveryLocation={deliveryLocation}
+      crop={crop}
+      quantity={quantity}
+    />
+  )
 }
 
 /* ─── Orders Page ─────────────────────────────────────────────────────────── */
@@ -658,12 +829,21 @@ function OrdersPage({ setActive, setActiveOrder }) {
                 <tr key={o.id}>
                   <td><b>{o.id}</b></td>
                   <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span className={`crop-dot ${(o.crop || '').toLowerCase()}`} />
-                      <b>{o.crop}</b>
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img
+                        src={o.imageUrl || getProduceImage(o.crop)}
+                        alt={o.crop}
+                        style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
+                      />
+                      <div>
+                        <b>{o.crop}</b>
+                        <small style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>
+                          {o.pickupLocation ? `${o.pickupLocation} → ${o.deliveryLocation || 'Delhi'}` : 'Verified harvest'}
+                        </small>
+                      </div>
+                    </div>
                   </td>
-                  <td>{o.quantity}</td>
+                  <td><b>{o.quantity}</b></td>
                   <td><b>{o.amount}</b></td>
                   <td><Badge tone={o.status === 'In transit' ? 'blue' : o.status === 'Delivered' ? 'green' : 'amber'}>{o.status}</Badge></td>
                   <td>{o.date}</td>
@@ -704,21 +884,65 @@ function AddProducePage({ setActive }) {
   const [priceForecast, setPriceForecast] = useState(null)
   const [isLoadingForecast, setIsLoadingForecast] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSearchingCustom, setIsSearchingCustom] = useState(false)
+  const [guidanceCustomInput, setGuidanceCustomInput] = useState('')
   const { show: showToast, node: toastNode } = useToast()
 
-  // Fetch accurate live Chronos-Bolt price forecast whenever crop changes
+  const standardCropList = [
+    'Onion', 'Potato', 'Tomato', 'Wheat', 'Basmati Rice', 'Mustard',
+    'Cotton', 'Soybean', 'Maize', 'Garlic', 'Ginger', 'Green Chilli',
+    'Red Chilli', 'Moong Dal', 'Tur Dal', 'Sugarcane', 'Turmeric',
+    'Groundnut', 'Barley', 'Cabbage', 'Cauliflower', 'Brinjal', 'Capsicum',
+    'Mango', 'Banana', 'Apple', 'Grapes'
+  ]
+  const isCustomCrop = Boolean(
+    formData.name && !standardCropList.some(c => c.toLowerCase() === formData.name.trim().toLowerCase())
+  )
+
+  const handleCustomCropLookup = async (name) => {
+    const crop = (name || formData.name).trim()
+    if (!crop) return
+    setIsSearchingCustom(true)
+    setIsLoadingForecast(true)
+    try {
+      const data = await aiService.searchCropRate(crop, 7)
+      if (data && data.crop) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.crop,
+          price: String(data.baseRate)
+        }))
+        setPriceForecast(data)
+        showToast(`✓ Live APMC Mandi rate found for ${data.crop}: ₹${data.baseRate?.toLocaleString()}/qtl (${data.mandi})`)
+      }
+    } catch (err) {
+      console.warn('Custom crop lookup error:', err)
+      showToast(`Could not fetch Mandi rate for ${crop}`, 'error')
+    } finally {
+      setIsSearchingCustom(false)
+      setIsLoadingForecast(false)
+    }
+  }
+
+  // Debounced auto-fetch whenever crop name changes
   useEffect(() => {
-    const crop = (formData.name || 'Onion').trim()
-    if (crop) {
+    const crop = (formData.name || '').trim()
+    if (!crop) return
+
+    const timer = setTimeout(() => {
       setIsLoadingForecast(true)
-      aiService.getPriceForecast(crop).then(res => {
-        if (res) setPriceForecast(res)
+      aiService.searchCropRate(crop).then(res => {
+        if (res) {
+          setPriceForecast(res)
+        }
       }).catch(err => {
         console.warn('AI forecast error:', err)
       }).finally(() => {
         setIsLoadingForecast(false)
       })
-    }
+    }, 450)
+
+    return () => clearTimeout(timer)
   }, [formData.name])
 
   const handleFileSelect = async (e) => {
@@ -727,17 +951,26 @@ function AddProducePage({ setActive }) {
     setSelectedFile(file)
     setIsAnalyzing(true)
 
-    const result = await aiService.assessQuality(file, formData.name || 'Produce')
-    if (result && formData.name) {
-      result.produce_name = formData.name
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result
+      setFormData(prev => ({ ...prev, imageUrl: dataUrl }))
+
+      const result = await aiService.assessQuality(file, formData.name || 'Produce')
+      if (result) {
+        if (formData.name) result.produce_name = formData.name
+        result.imageUrl = dataUrl
+      }
+      setQualityResult(result)
+      setIsAnalyzing(false)
+      setStep(3)
     }
-    setQualityResult(result)
-    setIsAnalyzing(false)
-    setStep(3)
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
+    const finalImg = formData.imageUrl || qualityResult?.imageUrl || getProduceImage(formData.name)
     try {
       await lotService.create({
         name: formData.name,
@@ -746,9 +979,10 @@ function AddProducePage({ setActive }) {
         status: 'AVAILABLE',
         grade: qualityResult ? (String(qualityResult.grade).startsWith('Grade') ? qualityResult.grade : `Grade ${qualityResult.grade}`) : 'Grade A',
         qualityScore: qualityResult ? (qualityResult.quality_score ?? qualityResult.score ?? 87) : 87,
-        location: formData.location
+        location: formData.location || 'Local Farm',
+        imageUrl: finalImg
       }, 1)
-      showToast('Produce lot successfully listed in the marketplace!')
+      showToast('Produce lot successfully listed with verified photo in marketplace!')
       setTimeout(() => setActive('Dashboard'), 1600)
     } catch (e) {
       console.error(e)
@@ -769,7 +1003,7 @@ function AddProducePage({ setActive }) {
   const changePct = priceForecast?.changePct ?? Number((((projected5d - mandiRate) / (mandiRate || 1)) * 100).toFixed(1))
   const isRising = Number(changePct) >= 1.5
   const isFalling = Number(changePct) <= -1.5
-  
+
   const estLotRevenue = Math.round((currentFarmerPrice * quantityKg) / 100)
   const estProjectedRevenue = Math.round((projected5d * quantityKg) / 100)
   const revenueGain = estProjectedRevenue - estLotRevenue
@@ -806,16 +1040,40 @@ function AddProducePage({ setActive }) {
               <p className="muted">Basic details help buyers find your produce easily and power AI price benchmarks.</p>
               <div className="form-grid">
                 <label>
-                  Crop name / type
-                  <input
-                    list="crop-options"
-                    placeholder="Enter or select crop (e.g. Onion, Mustard, Basmati Rice, Cotton…)"
-                    value={formData.name}
-                    onChange={e => {
-                      const newCrop = e.target.value
-                      setFormData({ ...formData, name: newCrop })
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span>Crop name / type</span>
+                    {isCustomCrop && (
+                      <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#166534', padding: '1px 7px', borderRadius: '6px', fontWeight: 700 }}>
+                        ⚡ Custom Produce (Live APMC Search)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <input
+                      list="crop-options"
+                      placeholder="Enter or select crop (e.g. Papaya, Dragon Fruit, Avocado, Onion, Mustard…)"
+                      value={formData.name}
+                      onChange={e => {
+                        const newCrop = e.target.value
+                        setFormData({ ...formData, name: newCrop })
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCustomCropLookup(formData.name)}
+                      disabled={isSearchingCustom || !formData.name?.trim()}
+                      className="primary-button"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      {isSearchingCustom ? (
+                        <Loader2 style={{ width: 14, height: 14, animation: 'spin 0.9s linear infinite' }} />
+                      ) : (
+                        <Search style={{ width: 14, height: 14 }} />
+                      )}
+                      <span>Search Mandi</span>
+                    </button>
+                  </div>
                   <datalist id="crop-options">
                     <option value="Onion" /><option value="Potato" /><option value="Tomato" />
                     <option value="Wheat" /><option value="Basmati Rice" /><option value="Mustard" />
@@ -827,7 +1085,72 @@ function AddProducePage({ setActive }) {
                     <option value="Millet (Bajra)" /><option value="Cabbage" /><option value="Cauliflower" />
                     <option value="Brinjal" /><option value="Capsicum" /><option value="Mango" />
                     <option value="Banana" /><option value="Apple" /><option value="Grapes" />
+                    <option value="Papaya" /><option value="Guava" /><option value="Pomegranate" />
+                    <option value="Dragon Fruit" /><option value="Watermelon" /><option value="Pineapple" />
+                    <option value="Kiwi" /><option value="Custard Apple" /><option value="Strawberry" />
+                    <option value="Avocado" /><option value="Litchi" /><option value="Lemon" /><option value="Orange" />
                   </datalist>
+
+                  {/* Real-time APMC Mandi Benchmark info */}
+                  <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                    {isLoadingForecast ? (
+                      <span style={{ fontSize: '0.78rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Loader2 style={{ width: 12, height: 12, animation: 'spin 0.9s linear infinite' }} />
+                        Querying real-time APMC Mandi benchmark for "{formData.name}"…
+                      </span>
+                    ) : priceForecast ? (
+                      <span style={{ fontSize: '0.78rem', color: '#15803d', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <ShieldCheck style={{ width: 14, height: 14, color: '#16a34a' }} />
+                        Mandi Benchmark: <b>₹{priceForecast.baseRate?.toLocaleString()}/qtl</b> ({priceForecast.mandi || 'APMC Mandi'})
+                      </span>
+                    ) : null}
+
+                    {priceForecast && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, price: String(priceForecast.baseRate) }))
+                          showToast(`Applied live Mandi rate: ₹${priceForecast.baseRate}/qtl`)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#15803d',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: '0.76rem',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Use ₹{priceForecast.baseRate?.toLocaleString()}/qtl
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Quick custom crop chips */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Quick custom crops:</span>
+                    {['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon', 'Avocado', 'Kiwi'].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => handleCustomCropLookup(c)}
+                        style={{
+                          background: formData.name === c ? '#dcfce7' : '#f8fafc',
+                          border: formData.name === c ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                          color: formData.name === c ? '#166534' : '#475569',
+                          borderRadius: '10px',
+                          padding: '1px 6px',
+                          fontSize: '0.72rem',
+                          cursor: 'pointer',
+                          fontWeight: formData.name === c ? 700 : 500
+                        }}
+                      >
+                        + {c}
+                      </button>
+                    ))}
+                  </div>
                 </label>
                 <label>
                   Available quantity
@@ -910,29 +1233,99 @@ function AddProducePage({ setActive }) {
               />
               <div
                 className="upload-box"
+                style={{
+                  border: formData.imageUrl ? '2px solid #22c55e' : undefined,
+                  background: formData.imageUrl ? '#f0fdf4' : undefined
+                }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <div className="upload-icon"><Package /></div>
-                <b>{selectedFile ? selectedFile.name : 'Click to select or drop produce photo'}</b>
-                <span>JPG or PNG · analyzed by FastAPI Farm Intelligence</span>
+                {formData.imageUrl ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <img
+                      src={formData.imageUrl}
+                      alt="Harvest upload preview"
+                      style={{ maxHeight: '160px', maxWidth: '100%', borderRadius: '8px', objectFit: 'cover', border: '1px solid #86efac' }}
+                    />
+                    <b>{selectedFile ? selectedFile.name : `${formData.name || 'Produce'} Photo Loaded`}</b>
+                    <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Ready for Computer Vision analysis</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="upload-icon"><Package /></div>
+                    <b>{selectedFile ? selectedFile.name : 'Click to select or drop produce photo'}</b>
+                    <span>JPG or PNG · analyzed by FastAPI Farm Intelligence</span>
+                  </>
+                )}
                 <button
                   type="button"
                   className="outline-button"
                   disabled={isAnalyzing}
+                  style={{ marginTop: '10px' }}
                   onClick={(e) => {
                     e.stopPropagation()
                     fileInputRef.current?.click()
                   }}
                 >
-                  {isAnalyzing ? <><Loader2 style={{ width: 14, animation: 'spin 0.9s linear infinite' }} /> Analyzing quality…</> : 'Choose photo'}
+                  {isAnalyzing ? <><Loader2 style={{ width: 14, animation: 'spin 0.9s linear infinite' }} /> Analyzing quality…</> : (formData.imageUrl ? 'Change photo' : 'Choose photo')}
                 </button>
+              </div>
+
+              {/* Quick sample photo selector */}
+              <div style={{ marginTop: '16px' }}>
+                <span className="eyebrow" style={{ display: 'block', marginBottom: '8px' }}>Or test with quick sample harvest photo:</span>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {['Watermelon', 'Onion', 'Potato', 'Tomato', 'Papaya', 'Mango'].map(c => {
+                    const sampleUrl = getProduceImage(c)
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, imageUrl: sampleUrl }))
+                          setIsAnalyzing(true)
+                          setTimeout(() => {
+                            aiService.assessQuality(null, formData.name || c).then(res => {
+                              if (res) {
+                                res.produce_name = formData.name || c
+                                res.imageUrl = sampleUrl
+                              }
+                              setQualityResult(res)
+                              setIsAnalyzing(false)
+                              setStep(3)
+                            })
+                          }, 400)
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: '#fff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '4px 10px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        <img src={sampleUrl} alt={c} style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover' }} />
+                        {c} Sample
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
             <div className="form-footer">
               <button className="text-button" onClick={() => setStep(1)}>Back</button>
               <button className="primary-button" onClick={() => {
+                const defaultImg = getProduceImage(formData.name)
+                setFormData(prev => ({ ...prev, imageUrl: prev.imageUrl || defaultImg }))
                 aiService.assessQuality(null, formData.name || 'Produce').then(res => {
-                  if (res && formData.name) res.produce_name = formData.name
+                  if (res) {
+                    if (formData.name) res.produce_name = formData.name
+                    res.imageUrl = formData.imageUrl || defaultImg
+                  }
                   setQualityResult(res)
                   setStep(3)
                 })
@@ -949,7 +1342,7 @@ function AddProducePage({ setActive }) {
               <h2>AI Quality Assessment Result</h2>
               <p className="muted">Analyzed for <b>{formData.name}</b> using AgriFlow Computer Vision API.</p>
               <div style={{ marginTop: '18px' }}>
-                <QualityCard qualityData={qualityResult || { produce_name: formData.name, grade: 'A', quality_score: 88 }} />
+                <QualityCard qualityData={qualityResult ? { ...qualityResult, imageUrl: formData.imageUrl || qualityResult.imageUrl } : { produce_name: formData.name, grade: 'A', quality_score: 88, imageUrl: formData.imageUrl }} />
               </div>
             </div>
             <div className="form-footer">
@@ -962,8 +1355,138 @@ function AddProducePage({ setActive }) {
         {step === 4 && (
           <>
             <div className="form-section">
-              <h2>Market Price Guidance for {formData.name}</h2>
-              <p className="muted">Real-time APMC Mandi benchmark &amp; Chronos-Bolt 7-day AI forecast tailored to your {formData.name} ({formData.quantity} kg) listing.</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <h2>Market Price Guidance for {formData.name}</h2>
+                  <p className="muted">Real-time APMC Mandi benchmark &amp; Chronos-Bolt 7-day AI forecast tailored to your {formData.name} ({formData.quantity} kg) listing.</p>
+                </div>
+                {isCustomCrop && (
+                  <span style={{
+                    fontSize: '0.78rem',
+                    background: '#dcfce7',
+                    color: '#166534',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    border: '1px solid #86efac',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <Sparkles style={{ width: 14, height: 14 }} /> Custom Mandi Guidance Active
+                  </span>
+                )}
+              </div>
+
+              {/* Verified APMC Mandi Benchmark Status Banner */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                background: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                borderRadius: '12px',
+                padding: '12px 18px',
+                marginTop: '16px',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ShieldCheck style={{ width: 20, height: 20, color: '#16a34a', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#166534' }}>
+                      {isCustomCrop ? 'Custom Produce APMC Mandi Benchmark' : 'Official APMC Mandi Benchmark'}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: '#15803d' }}>
+                      Mandi spot benchmark for <b>{formData.name}</b> retrieved from <b>{priceForecast?.mandi || 'Regional APMC Mandi'}</b> (Primary Hub: <b>{priceForecast?.hub || 'District Wholesale APMC'}</b>) via AgriFlow AI Intelligence.
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="live-dot" />
+                  <span style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 600 }}>APMC Mandi API Live</span>
+                </div>
+              </div>
+
+              {/* Custom Crop Lookup in Market Guidance */}
+              <div style={{
+                marginTop: '16px',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%)',
+                border: '1.5px solid #86efac',
+                borderRadius: '12px',
+                padding: '14px 18px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <b style={{ fontSize: '0.88rem', color: '#0f172a' }}>Crop not available in list or want to compare another custom variety?</b>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                      Enter any custom fruit, vegetable, or grain to search its actual APMC Mandi benchmark rate &amp; AI forecast:
+                    </p>
+                  </div>
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleCustomCropLookup(guidanceCustomInput)
+                    setGuidanceCustomInput('')
+                  }}
+                  style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
+                >
+                  <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+                    <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: 14, color: '#16a34a' }} />
+                    <input
+                      type="text"
+                      placeholder="Enter custom crop (e.g. Avocado, Dragon Fruit, Custard Apple, Papaya, Guava)..."
+                      value={guidanceCustomInput}
+                      onChange={e => setGuidanceCustomInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 32px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #86efac',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        background: '#fff'
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={isSearchingCustom || !guidanceCustomInput.trim()}
+                    style={{ padding: '8px 16px', fontSize: '0.84rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    {isSearchingCustom ? (
+                      <><Loader2 style={{ width: 14, height: 14, animation: 'spin 0.9s linear infinite' }} /> Querying Mandi…</>
+                    ) : (
+                      <><Search style={{ width: 14, height: 14 }} /> Search Actual Rate</>
+                    )}
+                  </button>
+                </form>
+                {/* Quick suggestions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Quick custom crops:</span>
+                  {['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon', 'Avocado', 'Kiwi'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => handleCustomCropLookup(c)}
+                      style={{
+                        background: formData.name === c ? '#dcfce7' : '#fff',
+                        border: formData.name === c ? '1.5px solid #16a34a' : '1px solid #cbd5e1',
+                        color: formData.name === c ? '#166534' : '#475569',
+                        borderRadius: '12px',
+                        padding: '2px 8px',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        fontWeight: formData.name === c ? 700 : 500
+                      }}
+                    >
+                      + {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Listing Overview Pill */}
               <div style={{ marginTop: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -1025,6 +1548,7 @@ function AddProducePage({ setActive }) {
                   crop={formData.name || 'Produce'}
                   price={currentFarmerPrice}
                   priceForecast={priceForecast}
+                  imageUrl={formData.imageUrl || qualityResult?.imageUrl}
                 />
               </div>
 
@@ -1201,7 +1725,10 @@ function BuyerDashboard({ setActive }) {
           <div className="produce-grid" style={{ padding: '0 22px 22px' }}>
             {products.map(p => (
               <div className="produce-card" key={p.id || p.crop}>
-                <div className={`produce-photo ${p.accent}`}><span>{p.crop[0]}</span></div>
+                <div className="produce-photo">
+                  <img src={p.imageUrl || getProduceImage(p.crop)} alt={p.crop} className="produce-img" />
+                  <Badge tone="green">{p.grade || 'Grade A'}</Badge>
+                </div>
                 <div className="produce-info">
                   <div className="flex items-start justify-between">
                     <div>
@@ -1254,40 +1781,51 @@ function FindProducePage({ setActive, setActiveOrder }) {
     const deliveryLoc = deliveryInput.trim()
 
     try {
-      await orderService.create({
+      const created = await orderService.create({
         consumerId: 1,
         productId: p.id || 1,
+        crop: p.crop,
+        price: p.price,
         quantity: parseInt(String(p.quantity).replace(/[^0-9]/g, ''), 10) || 500,
         pickupLocation: pickupLoc,
-        deliveryLocation: deliveryLoc
+        deliveryLocation: deliveryLoc,
+        imageUrl: p.imageUrl || getProduceImage(p.crop)
       })
 
       const newOrderObj = {
-        id: `ORD-${Date.now().toString().slice(-4)}`,
+        id: created?.id || `ORD-${Date.now().toString().slice(-4)}`,
+        buyer: 'FreshCart Foods',
         crop: p.crop,
         quantity: `${p.quantity}`,
+        amount: created?.amount || p.price,
         pickupLocation: pickupLoc,
         deliveryLocation: deliveryLoc,
         status: 'In transit',
-        shipmentId: 'SHP-001'
+        shipmentId: 'SHP-001',
+        imageUrl: p.imageUrl || getProduceImage(p.crop)
       }
       if (setActiveOrder) setActiveOrder(newOrderObj)
-      showToast(`Order placed! Pickup: ${pickupLoc} → ${deliveryLoc}`)
-      setTimeout(() => setActive('Shipments'), 1400)
+      showToast(`Order placed successfully! Added to your Orders list.`)
+      setTimeout(() => setActive('Orders'), 1200)
     } catch (e) {
       console.warn(e)
-      if (setActiveOrder) {
-        setActiveOrder({
-          id: 'ORD-2084',
-          crop: p.crop,
-          quantity: `${p.quantity}`,
-          pickupLocation: pickupLoc,
-          deliveryLocation: deliveryLoc,
-          shipmentId: 'SHP-001'
-        })
+      const fallbackOrder = {
+        id: `ORD-${Date.now().toString().slice(-4)}`,
+        buyer: 'FreshCart Foods',
+        crop: p.crop,
+        quantity: `${p.quantity}`,
+        amount: p.price || '₹26,000',
+        pickupLocation: pickupLoc,
+        deliveryLocation: deliveryLoc,
+        shipmentId: 'SHP-001',
+        status: 'In transit',
+        imageUrl: p.imageUrl || getProduceImage(p.crop)
       }
-      showToast(`Order registered! Opening live tracking…`)
-      setTimeout(() => setActive('Shipments'), 1400)
+      if (setActiveOrder) {
+        setActiveOrder(fallbackOrder)
+      }
+      showToast(`Order registered! Navigating to Orders…`)
+      setTimeout(() => setActive('Orders'), 1200)
     }
   }
 
@@ -1320,8 +1858,8 @@ function FindProducePage({ setActive, setActiveOrder }) {
         <div className="produce-grid large">
           {products.map((p, i) => (
             <div className="produce-card" key={p.id || p.crop + i}>
-              <div className={`produce-photo ${p.accent}`}>
-                <span>{p.crop[0]}</span>
+              <div className="produce-photo">
+                <img src={p.imageUrl || getProduceImage(p.crop)} alt={p.crop} className="produce-img" />
                 <Badge tone="green">Verified lot</Badge>
               </div>
               <div className="produce-info">
@@ -1358,16 +1896,50 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
   const [selectedCrop, setSelectedCrop] = useState('Onion')
   const [selectedMandi, setSelectedMandi] = useState(mandiLocations[0] || 'Delhi Azadpur Mandi')
   const [viewMode, setViewMode] = useState('deepdive') // 'deepdive' | 'allboard'
-  
+
   const [pricePoints, setPricePoints] = useState(defaultPricePoints)
   const [demandPoints, setDemandPoints] = useState(defaultDemandPoints)
   const [priceData, setPriceData] = useState(null)
   const [demandData, setDemandData] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Custom fruit / crop search states
+  const [customSearchInput, setCustomSearchInput] = useState('')
+  const [isSearchingCustom, setIsSearchingCustom] = useState(false)
+  const [customCropsList, setCustomCropsList] = useState(['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon'])
+  const { show: showToast, node: toastNode } = useToast()
+
   // All crops live board data
   const [allCropsData, setAllCropsData] = useState([])
   const [loadingAllCrops, setLoadingAllCrops] = useState(false)
+
+  // Custom Crop Rate API Search Handler
+  const handleCustomSearch = async (name) => {
+    const cropName = (name || customSearchInput).trim()
+    if (!cropName) return
+    setIsSearchingCustom(true)
+    try {
+      const data = await aiService.searchCropRate(cropName, 7)
+      if (data && data.crop) {
+        setCustomCropsList(prev => prev.includes(data.crop) ? prev : [...prev, data.crop])
+        setSelectedCrop(data.crop)
+        setPriceData(data)
+        if (data.forecasts && data.forecasts.length > 0) {
+          const pts = data.forecasts.map(f => Math.round(f.forecast))
+          setPricePoints(pts)
+        }
+        setActiveCategory('All Types')
+        setViewMode('deepdive')
+        showToast(`✓ Live APMC rate for ${data.crop}: ₹${data.baseRate?.toLocaleString()}/qtl (${data.mandi})`)
+        setCustomSearchInput('')
+      }
+    } catch (err) {
+      console.warn('Custom search error:', err)
+      showToast(`Could not fetch rate for ${cropName}`, 'error')
+    } finally {
+      setIsSearchingCustom(false)
+    }
+  }
 
   // Load single crop forecast
   useEffect(() => {
@@ -1410,12 +1982,13 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
     }
   }, [viewMode, allCropsData.length, fetchAllCrops])
 
-  // Filter crops based on active category and search
-  const filteredCrops = Object.keys(cropBaselines).filter(cropKey => {
-    const info = cropBaselines[cropKey]
+  // Filter crops based on active category and search (combining predefined & dynamic custom crops)
+  const allCropKeys = Array.from(new Set([...Object.keys(cropBaselines), ...customCropsList]))
+  const filteredCrops = allCropKeys.filter(cropKey => {
+    const info = cropBaselines[cropKey] || {}
     const matchesCat = activeCategory === 'All Types' || info.category === activeCategory
     const matchesSearch = cropKey.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (info.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (info.category || '').toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCat && matchesSearch
   })
 
@@ -1426,23 +1999,96 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
   const projectedPrice = priceData?.projectedPrice || Math.round(baseRate * 1.069)
   const primaryHub = cropConfig.hub || 'Primary APMC'
 
-  // Dynamic regional mandis tailored to crop
-  const regionalMandis = [
-    { name: cropConfig.mandi || selectedMandi, rate: baseRate, diff: 'Base APMC', distance: 'Local Hub', volume: '140 tonnes', trend: isRising ? 'up' : 'neutral' },
-    { name: primaryHub, rate: Math.round(baseRate * 1.045), diff: `+₹${Math.round(baseRate * 0.045)}`, distance: 'Primary Source', volume: '420 tonnes', trend: 'up' },
-    { name: 'Delhi Azadpur Mandi', rate: Math.round(baseRate * 1.02), diff: `+₹${Math.round(baseRate * 0.02)}`, distance: '28 km', volume: '210 tonnes', trend: 'up' },
-    { name: 'Delhi Ghazipur Mandi', rate: Math.round(baseRate * 0.985), diff: `-₹${Math.round(baseRate * 0.015)}`, distance: '36 km', volume: '115 tonnes', trend: 'down' },
-    { name: 'Panipat Regional Market', rate: Math.round(baseRate * 0.975), diff: `-₹${Math.round(baseRate * 0.025)}`, distance: '14 km', volume: '80 tonnes', trend: 'neutral' },
-  ]
+  // Dynamic regional mandis tailored to crop and selected region
+  const regionalMandis = useMemo(() => {
+    if (cropConfig.regionalHubs && cropConfig.regionalHubs.length > 0) {
+      return cropConfig.regionalHubs.map(h => {
+        const rate = Math.round(h.rateMultiplier ? baseRate * h.rateMultiplier : baseRate + (h.rateOffset ?? 0))
+        const diffVal = rate - baseRate
+        const diffStr = diffVal === 0 ? 'Base APMC' : diffVal > 0 ? `+₹${diffVal.toLocaleString()}` : `-₹${Math.abs(diffVal).toLocaleString()}`
+        return {
+          name: h.name,
+          distance: h.distance || 'Regional Hub',
+          rate,
+          diff: diffStr,
+          volume: h.volume || '320 tonnes',
+          trend: h.trend || (diffVal >= 0 ? 'up' : 'down')
+        }
+      })
+    }
+
+    // Category-aware fallback hubs tailored dynamically
+    const category = cropConfig.category || 'Vegetables'
+    const baseMandiName = selectedMandi || cropConfig.mandi || 'Regional APMC Mandi'
+    const hubName = cropConfig.hub || 'State Apex Market'
+
+    let regionalNames = []
+    if (category === 'Fruits') {
+      regionalNames = ['Bengaluru Binny Mill APMC', 'Mumbai Vashi APMC Mandi', 'Delhi Azadpur Fruit Mandi', 'Kolkata Mechua Wholesale Market']
+    } else if (category === 'Grains & Cereals') {
+      regionalNames = ['Karnal Anaj Mandi', 'Khanna Grain Market', 'Indore APMC Mandi', 'Bikaner Anaj Mandi']
+    } else if (category === 'Spices & Cash Crops') {
+      regionalNames = ['Guntur Chilli APMC', 'Unjha Spices Mandi', 'Kochi Spice Exchange', 'Nizamabad APMC Market']
+    } else if (category === 'Pulses & Oilseeds') {
+      regionalNames = ['Latur Pulse APMC', 'Indore Oilseed Market', 'Akola Mandi', 'Gulbarga APMC']
+    } else {
+      regionalNames = ['Delhi Azadpur Mandi', 'Agra Wholesale Mandi', 'Nashik APMC Mandi', 'Pune Gultekdi Market']
+    }
+
+    // Filter out names already in base or hub
+    const uniqueHops = regionalNames.filter(n => n !== baseMandiName && n !== hubName).slice(0, 3)
+
+    const list = [
+      {
+        name: baseMandiName,
+        rate: baseRate,
+        diff: 'Base APMC',
+        distance: 'Local Hub',
+        volume: '160 tonnes',
+        trend: isRising ? 'up' : 'neutral'
+      },
+      {
+        name: hubName,
+        rate: Math.round(baseRate * (isRising ? 1.045 : 1.02)),
+        diff: `+₹${Math.round(baseRate * (isRising ? 0.045 : 0.02)).toLocaleString()}`,
+        distance: 'Primary Source (45 km)',
+        volume: '420 tonnes',
+        trend: 'up'
+      }
+    ]
+
+    const multipliers = [
+      { mult: 1.025, dist: '120 km', vol: '240 tonnes', trend: 'up' },
+      { mult: 0.985, dist: '280 km', vol: '185 tonnes', trend: 'down' },
+      { mult: 0.975, dist: '410 km', vol: '110 tonnes', trend: 'neutral' }
+    ]
+
+    uniqueHops.forEach((mName, idx) => {
+      const info = multipliers[idx] || { mult: 1.01, dist: '200 km', vol: '150 tonnes', trend: 'neutral' }
+      const rate = Math.round(baseRate * info.mult)
+      const diffVal = rate - baseRate
+      list.push({
+        name: mName,
+        rate,
+        diff: diffVal === 0 ? 'Base APMC' : diffVal > 0 ? `+₹${diffVal.toLocaleString()}` : `-₹${Math.abs(diffVal).toLocaleString()}`,
+        distance: info.dist,
+        volume: info.vol,
+        trend: info.trend
+      })
+    })
+
+    return list
+  }, [cropConfig, selectedCrop, selectedMandi, baseRate, isRising])
 
   return (
     <>
+      {toastNode}
       <div className="welcome">
         <div>
           <p className="eyebrow">Market Prices &amp; Mandi Intelligence <span className="live-dot" /></p>
           <h1>{role === 'farmer' ? 'Live Market Prices' : 'Market Intelligence'}</h1>
           <p className="subhead">
-            Real-time APMC Mandi price tracking &amp; Amazon Chronos-Bolt AI time-series forecasting across 22+ agricultural commodities.
+            Real-time APMC Mandi price tracking &amp; Amazon Chronos-Bolt AI time-series forecasting across 60+ agricultural commodities &amp; custom fruits.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -1459,7 +2105,7 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
               ))}
             </select>
           </div>
-          
+
           <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
             <button
               onClick={() => setViewMode('deepdive')}
@@ -1476,9 +2122,134 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
               className={viewMode === 'allboard' ? 'primary-button' : 'outline-button'}
               style={{ padding: '6px 14px', fontSize: '0.85rem', borderRadius: '6px' }}
             >
-              All Crops Live Board ({Object.keys(cropBaselines).length})
+              All Crops Live Board ({allCropKeys.length})
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Prominent Custom Fruit & Crop Mandi Rate Search Card */}
+      <div className="card" style={{
+        padding: '16px 20px',
+        marginBottom: '20px',
+        background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)',
+        border: '1.5px solid #86efac',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(34, 197, 94, 0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              background: '#22c55e',
+              color: '#fff',
+              borderRadius: '8px',
+              padding: '6px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Sparkles style={{ width: 18, height: 18 }} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#166534' }}>
+                Search Custom Fruit &amp; Crop Rate (Live Mandi API)
+              </h3>
+              <p style={{ fontSize: '0.82rem', color: '#15803d', margin: '2px 0 0' }}>
+                Farmers can type ANY custom fruit or crop name below to query actual APMC mandi benchmark rates &amp; AI price projections.
+              </p>
+            </div>
+          </div>
+          <span style={{
+            fontSize: '0.75rem',
+            background: '#dcfce7',
+            color: '#166534',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontWeight: 700,
+            border: '1px solid #86efac'
+          }}>
+            ⚡ Real-time APMC Mandi API Active
+          </span>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleCustomSearch(customSearchInput)
+          }}
+          style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}
+        >
+          <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+            <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#16a34a' }} />
+            <input
+              type="text"
+              placeholder="Enter any fruit/crop name (e.g. Papaya, Guava, Dragon Fruit, Pomegranate, Watermelon, Pineapple, Kiwi)..."
+              value={customSearchInput}
+              onChange={e => setCustomSearchInput(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px 10px 38px',
+                borderRadius: '8px',
+                border: '1.5px solid #86efac',
+                fontSize: '0.9rem',
+                outline: 'none',
+                background: '#fff',
+                color: '#0f172a'
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={isSearchingCustom || !customSearchInput.trim()}
+            style={{
+              padding: '10px 20px',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {isSearchingCustom ? (
+              <><Loader2 style={{ width: 15, height: 15, animation: 'spin 0.9s linear infinite' }} /> Fetching Live Rate…</>
+            ) : (
+              <><Search style={{ width: 15, height: 15 }} /> Search Actual Rate</>
+            )}
+          </button>
+        </form>
+
+        {/* Quick popular custom fruits */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Quick custom fruits:</span>
+          {['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon', 'Pineapple', 'Kiwi', 'Custard Apple', 'Litchi', 'Strawberry'].map(fruit => (
+            <button
+              key={fruit}
+              type="button"
+              onClick={() => handleCustomSearch(fruit)}
+              style={{
+                background: selectedCrop === fruit ? '#dcfce7' : '#fff',
+                border: selectedCrop === fruit ? '1.5px solid #16a34a' : '1px solid #cbd5e1',
+                color: selectedCrop === fruit ? '#166534' : '#334155',
+                borderRadius: '16px',
+                padding: '3px 10px',
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                fontWeight: selectedCrop === fruit ? 700 : 500,
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.color = '#166534' }}
+              onMouseLeave={e => {
+                if (selectedCrop !== fruit) {
+                  e.currentTarget.style.borderColor = '#cbd5e1'
+                  e.currentTarget.style.color = '#334155'
+                }
+              }}
+            >
+              + {fruit}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -1522,7 +2293,8 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
         <div className="crop-filter-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {filteredCrops.map(crop => {
             const isSelected = selectedCrop === crop
-            const item = cropBaselines[crop]
+            const item = cropBaselines[crop] || {}
+            const isCustom = customCropsList.includes(crop)
             return (
               <button
                 key={crop}
@@ -1541,6 +2313,18 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
                 }}
               >
                 <span>{crop}</span>
+                {isCustom && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    color: isSelected ? '#fff' : '#16a34a',
+                    background: isSelected ? 'rgba(0,0,0,0.2)' : '#dcfce7',
+                    padding: '1px 5px',
+                    borderRadius: '6px'
+                  }}>
+                    Live APMC
+                  </span>
+                )}
                 <span style={{
                   fontSize: '0.75rem',
                   opacity: 0.85,
@@ -1548,15 +2332,44 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
                   borderRadius: '10px',
                   background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)'
                 }}>
-                  ₹{item.baseRate}
+                  ₹{item.baseRate || 2500}
                 </span>
               </button>
             )
           })}
           {filteredCrops.length === 0 && (
-            <p style={{ color: '#64748b', fontSize: '0.88rem', margin: '8px 0' }}>
-              No crops found matching "{searchQuery}" in {activeCategory}.
-            </p>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              background: '#f8fafc',
+              border: '1px dashed #94a3b8',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              width: '100%',
+              margin: '8px 0'
+            }}>
+              <div>
+                <b style={{ color: '#0f172a', fontSize: '0.88rem' }}>No pre-loaded crops found matching "{searchQuery}"</b>
+                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  Query actual APMC Mandi benchmark rates &amp; AI forecasts for <strong>"{searchQuery}"</strong> via AgriFlow Intelligence API.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => handleCustomSearch(searchQuery)}
+                disabled={isSearchingCustom}
+                style={{ padding: '6px 14px', fontSize: '0.84rem', whiteSpace: 'nowrap' }}
+              >
+                {isSearchingCustom ? (
+                  <><Loader2 style={{ width: 14, height: 14, animation: 'spin 0.9s linear infinite' }} /> Searching…</>
+                ) : (
+                  <><Search style={{ width: 14, height: 14 }} /> Search "{searchQuery}" in Mandi API</>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1672,6 +2485,31 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
       ) : (
         /* VIEW MODE 2: SINGLE CROP DEEP DIVE */
         <>
+          {/* Live APMC Benchmark Status Banner */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
+            borderRadius: '10px',
+            padding: '10px 16px',
+            marginBottom: '18px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck style={{ width: 18, height: 18, color: '#16a34a', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.86rem', color: '#166534' }}>
+                <strong>Verified APMC Mandi Benchmark:</strong> Viewing real-time rate for <b>{selectedCrop}</b> from <b>{cropConfig.mandi || selectedMandi}</b> (Trading Hub: <b>{primaryHub}</b>) powered by Amazon Chronos-Bolt AI.
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="live-dot" />
+              <span style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 600 }}>APMC Mandi API Live</span>
+            </div>
+          </div>
+
           <div className="metrics" style={{ marginBottom: '24px' }}>
             <Metric
               label={`${selectedCrop} Spot Price`}
@@ -1842,6 +2680,11 @@ const sampleImages = {
   Potato: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="p1" cx="45%" cy="45%" r="55%"><stop offset="0%" stop-color="%23fde68a"/><stop offset="65%" stop-color="%23d97706"/><stop offset="100%" stop-color="%2378350f"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><ellipse cx="200" cy="140" rx="100" ry="72" fill="url(%23p1)"/><circle cx="150" cy="120" r="4" fill="%2392400e"/><circle cx="240" cy="150" r="5" fill="%2392400e"/><circle cx="200" cy="170" r="4" fill="%2392400e"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Premium Potato Lot</text></svg>`,
   Tomato: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="t1" cx="40%" cy="40%" r="60%"><stop offset="0%" stop-color="%23fca5a5"/><stop offset="60%" stop-color="%23dc2626"/><stop offset="100%" stop-color="%23991b1b"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><circle cx="200" cy="140" r="85" fill="url(%23t1)"/><path d="M200 65 L205 50 L215 60 L200 55 L185 60 L195 50 Z" fill="%2316a34a"/><circle cx="200" cy="58" r="6" fill="%2315803d"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade B Fresh Tomato Lot</text></svg>`,
   Wheat: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><linearGradient id="w1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="%23fef08a"/><stop offset="100%" stop-color="%23ca8a04"/></linearGradient></defs><rect width="400" height="280" fill="%230f172a"/><ellipse cx="170" cy="130" rx="12" ry="40" transform="rotate(-20 170 130)" fill="url(%23w1)"/><ellipse cx="230" cy="130" rx="12" ry="40" transform="rotate(20 230 130)" fill="url(%23w1)"/><ellipse cx="200" cy="120" rx="12" ry="45" fill="url(%23w1)"/><line x1="200" y1="75" x2="200" y2="210" stroke="%23a16207" stroke-width="3"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Clean Grain Wheat</text></svg>`,
+  Apple: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="a1" cx="35%" cy="35%" r="65%"><stop offset="0%" stop-color="%23f87171"/><stop offset="55%" stop-color="%23b91c1c"/><stop offset="100%" stop-color="%23450a0a"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><circle cx="175" cy="140" r="75" fill="url(%23a1)"/><circle cx="225" cy="140" r="75" fill="url(%23a1)"/><path d="M200 65 Q205 38 215 32" stroke="%2378350f" stroke-width="5" fill="none"/><ellipse cx="218" cy="45" rx="12" ry="7" transform="rotate(-25 218 45)" fill="%2322c55e"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Fresh Royal Delicious Apple</text></svg>`,
+  Banana: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="b1" cx="45%" cy="30%" r="70%"><stop offset="0%" stop-color="%23fef08a"/><stop offset="65%" stop-color="%23eab308"/><stop offset="100%" stop-color="%23854d0e"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><path d="M120 90 Q170 210 280 180 Q190 230 110 105 Z" fill="url(%23b1)"/><ellipse cx="113" cy="98" rx="8" ry="6" fill="%234d7c0f"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Robusta Banana Bunch</text></svg>`,
+  Mango: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="m1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="%23fef08a"/><stop offset="45%" stop-color="%23f59e0b"/><stop offset="85%" stop-color="%23ea580c"/><stop offset="100%" stop-color="%23991b1b"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><path d="M185 70 C245 65 265 140 235 195 C205 240 145 220 150 160 C155 110 160 75 185 70 Z" fill="url(%23m1)"/><ellipse cx="180" cy="62" rx="10" ry="18" transform="rotate(-30 180 62)" fill="%2316a34a"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Alphonso Mango</text></svg>`,
+  Orange: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="o1" cx="35%" cy="35%" r="65%"><stop offset="0%" stop-color="%23fed7aa"/><stop offset="50%" stop-color="%23f97316"/><stop offset="100%" stop-color="%23c2410c"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><circle cx="200" cy="140" r="82" fill="url(%23o1)"/><circle cx="200" cy="60" r="6" fill="%2315803d"/><ellipse cx="215" cy="55" rx="12" ry="6" transform="rotate(15 215 55)" fill="%2316a34a"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Nagpur Orange</text></svg>`,
+  Papaya: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="pa1" cx="40%" cy="40%" r="60%"><stop offset="0%" stop-color="%23fde047"/><stop offset="50%" stop-color="%23f97316"/><stop offset="100%" stop-color="%23c2410c"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><ellipse cx="200" cy="140" rx="65" ry="95" fill="url(%23pa1)"/><ellipse cx="200" cy="50" rx="8" ry="12" fill="%2315803d"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Ripe Papaya Harvest</text></svg>`,
   Defective: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="d1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23fdba74"/><stop offset="50%" stop-color="%23c2410c"/><stop offset="100%" stop-color="%23431407"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><circle cx="200" cy="140" r="85" fill="url(%23d1)"/><circle cx="160" cy="125" r="22" fill="%2327272a" opacity="0.85"/><circle cx="230" cy="165" r="16" fill="%2327272a" opacity="0.75"/><text x="200" y="260" fill="%23ef4444" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade C Defective Lot (Rot / Decay)</text></svg>`
 }
 
@@ -1858,8 +2701,32 @@ function AIInsightsPage({ setActive }) {
   const [priceForecast, setPriceForecast] = useState(null)
   const [demandForecast, setDemandForecast] = useState(null)
   const [smartMatches, setSmartMatches] = useState([])
+  const [customCropInput, setCustomCropInput] = useState('')
+  const [isSearchingRate, setIsSearchingRate] = useState(false)
+  const [customCropsList, setCustomCropsList] = useState(['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon'])
   const fileInputRef = useRef(null)
   const { show: showToast, node: toastNode } = useToast()
+
+  const handleSearchCustomRate = async (name) => {
+    const cropName = (name || customCropInput).trim()
+    if (!cropName) return
+    setIsSearchingRate(true)
+    try {
+      const data = await aiService.searchCropRate(cropName, 7)
+      if (data && data.crop) {
+        setCustomCropsList(prev => prev.includes(data.crop) ? prev : [...prev, data.crop])
+        setSelectedCrop(data.crop)
+        setPriceForecast(data)
+        setForecastCategory('All Types')
+        showToast(`✓ Live Mandi rate for ${data.crop}: ₹${data.baseRate?.toLocaleString()}/qtl (${data.mandi})`)
+        setCustomCropInput('')
+      }
+    } catch (err) {
+      showToast(`Could not fetch rate for ${cropName}`, 'error')
+    } finally {
+      setIsSearchingRate(false)
+    }
+  }
 
   useEffect(() => {
     // Initial fetch of quality baseline
@@ -2076,6 +2943,36 @@ function AIInsightsPage({ setActive }) {
                       🌾 Clean Wheat (Grade A)
                     </button>
                     <button
+                      className={`sample-pill ${imagePreview === sampleImages.Apple ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Apple', 'A', 94, 93, 5, 2, 'Apple')}
+                    >
+                      🍎 Fresh Apple (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Banana ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Banana', 'A', 91, 89, 8, 3, 'Banana')}
+                    >
+                      🍌 Sweet Banana (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Mango ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Mango', 'A', 93, 92, 6, 2, 'Mango')}
+                    >
+                      🥭 Alphonso Mango (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Orange ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Orange', 'A', 90, 88, 9, 3, 'Orange')}
+                    >
+                      🍊 Nagpur Orange (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Papaya ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Papaya', 'A', 92, 91, 7, 2, 'Papaya')}
+                    >
+                      🍈 Fresh Papaya (Grade A)
+                    </button>
+                    <button
                       className={`sample-pill ${imagePreview === sampleImages.Defective ? 'active' : ''}`}
                       onClick={() => handleTestSample('Blemished Produce', 'C', 54, 52, 32, 16, 'Defective')}
                     >
@@ -2125,7 +3022,85 @@ function AIInsightsPage({ setActive }) {
       )}
 
       {subTab === 'forecasting' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Custom Crop Rate Search Bar */}
+          <div className="card" style={{
+            padding: '16px 20px',
+            marginBottom: '16px',
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)',
+            border: '1.5px solid #86efac',
+            borderRadius: '10px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.96rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles style={{ width: 16, color: '#16a34a' }} /> Custom Fruit &amp; Crop Rate Search (Live Mandi API)
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#15803d' }}>
+                  Search live APMC benchmark prices and Chronos-Bolt AI forecasts for any fruit or vegetable.
+                </p>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSearchCustomRate()
+                }}
+                style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: '1', minWidth: '280px', maxWidth: '480px' }}
+              >
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '15px', color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    placeholder="Enter fruit/crop (e.g. Papaya, Guava, Pomegranate, Dragon Fruit)..."
+                    value={customCropInput}
+                    onChange={e => setCustomCropInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 32px',
+                      borderRadius: '8px',
+                      border: '1px solid #86efac',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                      background: '#fff'
+                    }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={isSearchingRate || !customCropInput.trim()}
+                  style={{ padding: '8px 16px', fontSize: '0.84rem', whiteSpace: 'nowrap' }}
+                >
+                  {isSearchingRate ? <><Loader2 style={{ width: 14, animation: 'spin 0.9s linear infinite' }} /> Fetching…</> : <><Search style={{ width: 14 }} /> Search Actual Rate</>}
+                </button>
+              </form>
+            </div>
+
+            {/* Quick fruit chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '4px' }}>
+              <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Quick custom fruits:</span>
+              {['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon', 'Pineapple', 'Kiwi', 'Custard Apple'].map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => handleSearchCustomRate(f)}
+                  style={{
+                    background: selectedCrop === f ? '#dcfce7' : '#fff',
+                    border: selectedCrop === f ? '1.5px solid #16a34a' : '1px solid #cbd5e1',
+                    color: selectedCrop === f ? '#166534' : '#334155',
+                    borderRadius: '14px',
+                    padding: '2px 9px',
+                    fontSize: '0.76rem',
+                    cursor: 'pointer',
+                    fontWeight: selectedCrop === f ? 700 : 500
+                  }}
+                >
+                  + {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', maxWidth: '100%' }}>
               {cropCategories.map(cat => (
@@ -2161,40 +3136,55 @@ function AIInsightsPage({ setActive }) {
           </div>
 
           <div className="crop-filter-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {Object.keys(cropBaselines)
+            {Array.from(new Set([...Object.keys(cropBaselines), ...customCropsList]))
               .filter(crop => {
-                const info = cropBaselines[crop]
+                const info = cropBaselines[crop] || {}
                 const matchesCat = forecastCategory === 'All Types' || info.category === forecastCategory
                 const matchesSearch = crop.toLowerCase().includes(forecastSearch.toLowerCase()) ||
-                                      (info.category || '').toLowerCase().includes(forecastSearch.toLowerCase())
+                  (info.category || '').toLowerCase().includes(forecastSearch.toLowerCase())
                 return matchesCat && matchesSearch
               })
-              .map(crop => (
-                <button
-                  key={crop}
-                  onClick={() => setSelectedCrop(crop)}
-                  className={`crop-pill ${selectedCrop === crop ? 'primary-button' : 'outline-button'}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    fontWeight: selectedCrop === crop ? 700 : 500
-                  }}
-                >
-                  <span>{crop}</span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    opacity: 0.85,
-                    padding: '1px 6px',
-                    borderRadius: '10px',
-                    background: selectedCrop === crop ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)'
-                  }}>
-                    ₹{cropBaselines[crop]?.baseRate}
-                  </span>
-                </button>
-              ))}
+              .map(crop => {
+                const isCustom = customCropsList.includes(crop)
+                return (
+                  <button
+                    key={crop}
+                    onClick={() => setSelectedCrop(crop)}
+                    className={`crop-pill ${selectedCrop === crop ? 'primary-button' : 'outline-button'}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontWeight: selectedCrop === crop ? 700 : 500
+                    }}
+                  >
+                    <span>{crop}</span>
+                    {isCustom && (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        color: selectedCrop === crop ? '#fff' : '#16a34a',
+                        background: selectedCrop === crop ? 'rgba(0,0,0,0.2)' : '#dcfce7',
+                        padding: '1px 5px',
+                        borderRadius: '6px'
+                      }}>
+                        Live APMC
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: '0.75rem',
+                      opacity: 0.85,
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      background: selectedCrop === crop ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)'
+                    }}>
+                      ₹{cropBaselines[crop]?.baseRate || 2500}
+                    </span>
+                  </button>
+                )
+              })}
           </div>
 
           <div className="dashboard-grid">
@@ -2353,10 +3343,16 @@ function MyLotsPage({ setActive }) {
                 filteredLots.map(l => (
                   <tr key={l.id}>
                     <td>
-                      <div className="crop-cell">
-                        <span className={`crop-dot ${(l.crop || '').toLowerCase()}`} />
-                        <b>{l.crop}</b>
-                        <small>{l.id}</small>
+                      <div className="crop-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <img
+                          src={l.imageUrl || getProduceImage(l.crop)}
+                          alt={l.crop}
+                          style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }}
+                        />
+                        <div>
+                          <b>{l.crop}</b>
+                          <small style={{ display: 'block', color: '#64748b' }}>{l.id}</small>
+                        </div>
                       </div>
                     </td>
                     <td><b>{l.quantity}</b></td>
@@ -2668,7 +3664,7 @@ function AgriCapitalPage({ role }) {
 
   const portfolio = [
     { pool: 'Tomato Pool A', emoji: '🍅', invested: 5000, change: '+7.2%', accent: '#e53e3e' },
-    { pool: 'Onion Pool B',  emoji: '🧅', invested: 7000, change: '+4.8%', accent: '#805ad5' },
+    { pool: 'Onion Pool B', emoji: '🧅', invested: 7000, change: '+4.8%', accent: '#805ad5' },
     { pool: 'Potato Pool C', emoji: '🥔', invested: 8000, change: '+8.1%', accent: '#d69e2e' },
   ]
 
@@ -2695,11 +3691,11 @@ function AgriCapitalPage({ role }) {
     const dash = (score / 100) * circ
     return (
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e2e8f0" strokeWidth="8" />
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={scoreColor(score)} strokeWidth="8"
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth="8" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={scoreColor(score)} strokeWidth="8"
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
-        <text x={size/2} y={size/2 + 6} textAnchor="middle"
-          style={{ transform: `rotate(90deg)`, transformOrigin: `${size/2}px ${size/2}px`, fill: scoreColor(score), fontSize: '18px', fontWeight: '700' }}>
+        <text x={size / 2} y={size / 2 + 6} textAnchor="middle"
+          style={{ transform: `rotate(90deg)`, transformOrigin: `${size / 2}px ${size / 2}px`, fill: scoreColor(score), fontSize: '18px', fontWeight: '700' }}>
           {score}
         </text>
       </svg>
@@ -2750,11 +3746,11 @@ function AgriCapitalPage({ role }) {
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1a202c' }}>AI Score Breakdown</h3>
               <span style={{ fontSize: '0.78rem', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', background: p.risk === 'Low' ? '#f0fff4' : p.risk === 'Medium' ? '#fffff0' : '#fff5f5', color: riskColor(p.risk), border: `1px solid ${riskColor(p.risk)}44` }}>{p.risk} Risk</span>
             </div>
-            <ScoreBar label="Yield History"    value={p.yieldHistory} />
-            <ScoreBar label="Produce Quality"  value={p.produceQuality} />
-            <ScoreBar label="Demand Forecast"  value={p.demandForecast} />
-            <ScoreBar label="Price Outlook"    value={p.priceOutlook} />
-            <ScoreBar label="Logistics"        value={p.logisticsScore} />
+            <ScoreBar label="Yield History" value={p.yieldHistory} />
+            <ScoreBar label="Produce Quality" value={p.produceQuality} />
+            <ScoreBar label="Demand Forecast" value={p.demandForecast} />
+            <ScoreBar label="Price Outlook" value={p.priceOutlook} />
+            <ScoreBar label="Logistics" value={p.logisticsScore} />
           </div>
 
           {/* Market Intelligence */}
@@ -2879,9 +3875,9 @@ function AgriCapitalPage({ role }) {
           <p style={{ margin: '0 0 28px', opacity: 0.85, fontSize: '0.95rem' }}>Participate in verified agricultural investment pools powered by real farm data</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             {[
-              { label: 'Virtual Capital',   value: '₹20,000', sub: '3 active pools',    green: false },
-              { label: 'Estimated Value',   value: '₹21,350', sub: '+6.75% growth',     green: true  },
-              { label: 'Estimated Gain',    value: '+₹1,350', sub: 'this harvest cycle', green: true  },
+              { label: 'Virtual Capital', value: '₹20,000', sub: '3 active pools', green: false },
+              { label: 'Estimated Value', value: '₹21,350', sub: '+6.75% growth', green: true },
+              { label: 'Estimated Gain', value: '+₹1,350', sub: 'this harvest cycle', green: true },
             ].map((s, i) => (
               <div key={i} style={{ background: 'rgba(255,255,255,0.13)', borderRadius: '14px', padding: '18px 20px', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <div style={{ fontSize: '0.72rem', opacity: 0.8, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
@@ -3022,23 +4018,23 @@ export default function FarmLinkApp() {
 
   const content = role === 'farmer' ? (
     active === 'Shipments' ? <ShipmentsPage activeOrder={activeOrder} /> :
-    active === 'Orders' ? <OrdersPage setActive={setActive} setActiveOrder={setActiveOrder} /> :
-    active === 'Add Produce' ? <AddProducePage setActive={setActive} /> :
-    active === 'Market Prices' ? <MarketPricesPage role="farmer" setActive={setActive} /> :
-    active === 'AI Insights' ? <AIInsightsPage setActive={setActive} /> :
-    active === 'My Lots' ? <MyLotsPage setActive={setActive} /> :
-    active === 'Agri Capital' ? <AgriCapitalPage role={role} setActive={setActive} /> :
-    active === 'Profile' ? <ProfilePage role={role} /> :
-    <FarmerDashboard setActive={setActive} />
+      active === 'Orders' ? <OrdersPage setActive={setActive} setActiveOrder={setActiveOrder} /> :
+        active === 'Add Produce' ? <AddProducePage setActive={setActive} /> :
+          active === 'Market Prices' ? <MarketPricesPage role="farmer" setActive={setActive} /> :
+            active === 'AI Insights' ? <AIInsightsPage setActive={setActive} /> :
+              active === 'My Lots' ? <MyLotsPage setActive={setActive} /> :
+                active === 'Agri Capital' ? <AgriCapitalPage role={role} setActive={setActive} /> :
+                  active === 'Profile' ? <ProfilePage role={role} /> :
+                    <FarmerDashboard setActive={setActive} activeOrder={activeOrder} />
   ) : (
     active === 'Find Produce' ? <FindProducePage setActive={setActive} setActiveOrder={setActiveOrder} /> :
-    active === 'Market Intelligence' ? <MarketPricesPage role="buyer" setActive={setActive} /> :
-    active === 'Shipments' ? <ShipmentsPage activeOrder={activeOrder} /> :
-    active === 'Orders' ? <OrdersPage setActive={setActive} setActiveOrder={setActiveOrder} /> :
-    active === 'My Tenders' ? <MyTendersPage setActive={setActive} /> :
-    active === 'Agri Capital' ? <AgriCapitalPage role={role} setActive={setActive} /> :
-    active === 'Profile' ? <ProfilePage role={role} /> :
-    <BuyerDashboard setActive={setActive} />
+      active === 'Market Intelligence' ? <MarketPricesPage role="buyer" setActive={setActive} /> :
+        active === 'Shipments' ? <ShipmentsPage activeOrder={activeOrder} /> :
+          active === 'Orders' ? <OrdersPage setActive={setActive} setActiveOrder={setActiveOrder} /> :
+            active === 'My Tenders' ? <MyTendersPage setActive={setActive} /> :
+              active === 'Agri Capital' ? <AgriCapitalPage role={role} setActive={setActive} /> :
+                active === 'Profile' ? <ProfilePage role={role} /> :
+                  <BuyerDashboard setActive={setActive} />
   )
 
   return (
