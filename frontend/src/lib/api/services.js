@@ -5,6 +5,10 @@ const JAVA_API_URL = 'http://localhost:8080/api';
 const AI_API_URL = 'http://localhost:8000/api';
 const LOGISTICS_API_URL = 'http://localhost:5000/api';
 const SOCKET_URL = 'http://localhost:5000';
+const JAVA_API_URL = import.meta.env.VITE_JAVA_API_URL || 'http://localhost:8080/api';
+const AI_API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:8000/api';
+const LOGISTICS_API_URL = import.meta.env.VITE_LOGISTICS_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
 async function fetchJson(url, options = {}) {
   try {
