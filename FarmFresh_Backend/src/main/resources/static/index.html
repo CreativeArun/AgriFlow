@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FarmFresh — Dark Agro Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="active-consumer">
+
+<div class="scene-wrap" id="sceneWrap">
+    <div class="scene" id="scene">
+        <div class="glow-sun"></div>
+        <div class="field"></div>
+
+        <!-- floating produce, arranged at varied Z depths -->
+        <div class="float-item drift" style="left:6%; top:18%; --z:-120px; --r:-8deg;">
+            <svg width="86" height="86" viewBox="0 0 100 100"><circle cx="50" cy="55" r="30" fill="#B8412A"/><path d="M50 25c4-8 14-10 18-4-6 2-10 6-11 10" fill="#3B7A3F"/></svg>
+        </div>
+        <div class="float-item drift2 spin-slow" style="left:16%; top:55%; --z:-60px; --r:6deg;">
+            <svg width="70" height="70" viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="14" ry="34" fill="#E3A459" transform="rotate(20 50 50)"/><ellipse cx="50" cy="50" rx="14" ry="34" fill="#D4933F" transform="rotate(-20 50 50)"/></svg>
+        </div>
+        <div class="float-item drift3" style="left:80%; top:14%; --z:-180px; --r:10deg;">
+            <svg width="100" height="100" viewBox="0 0 100 100"><path d="M50 10c22 6 34 26 30 46-4 20-24 34-40 30S10 62 14 42 28 4 50 10z" fill="#3B7A3F"/><path d="M50 20c14 4 22 18 20 30" fill="none" stroke="#5C9E5F" stroke-width="3"/></svg>
+        </div>
+        <div class="float-item drift" style="left:70%; top:60%; --z:-40px; --r:-14deg;">
+            <svg width="60" height="60" viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="26" ry="30" fill="#B8412A"/><ellipse cx="50" cy="50" rx="26" ry="30" fill="#D66646" opacity="0.5" transform="translate(4 -4)"/><path d="M50 22c3-10 12-13 18-8-5 2-8 6-9 11" fill="#3B7A3F"/></svg>
+        </div>
+        <div class="float-item drift2" style="left:44%; top:8%; --z:-220px; --r:4deg;">
+            <svg width="120" height="60" viewBox="0 0 140 70"><path d="M10 60c10-40 30-55 60-55s50 15 60 55" fill="none" stroke="#E3A459" stroke-width="4" opacity="0.85"/></svg>
+        </div>
+        <div class="float-item drift3" style="left:90%; top:70%; --z:-90px; --r:-6deg;">
+            <svg width="64" height="64" viewBox="0 0 100 100"><circle cx="50" cy="50" r="26" fill="#E3A459"/><circle cx="50" cy="50" r="26" fill="none" stroke="#C97C2E" stroke-width="2"/></svg>
+        </div>
+        <div class="float-item drift" style="left:30%; top:78%; --z:-30px; --r:12deg;">
+            <svg width="50" height="50" viewBox="0 0 100 100"><path d="M50 10c25 5 40 25 40 45s-15 35-40 35-40-15-40-35S25 15 50 10z" fill="#7FA687"/></svg>
+        </div>
+        <div class="float-item drift2" style="left:58%; top:36%; --z:-260px; --r:-3deg;">
+            <svg width="46" height="46" viewBox="0 0 100 100"><path d="M50 12c22 5 36 24 33 45-3 21-22 33-38 30S12 66 15 45 28 7 50 12z" fill="#5C9E5F" opacity="0.85"/></svg>
+        </div>
+    </div>
+</div>
+<div class="scrim"></div>
+
+<div class="app">
+
+    <div class="topbar">
+        <div class="brand">
+            <div class="brand-mark">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z" fill="#fff"/></svg>
+            </div>
+            <div>
+                <div class="brand-name">FarmFresh</div>
+                <div class="brand-sub">From Farm to Your Table</div>
+            </div>
+        </div>
+        <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" placeholder="Search for products, farmers, categories…">
+        </div>
+        <div class="role-switch">
+            <button class="role-btn active" data-role="consumer" onclick="setRole('consumer')">Consumer</button>
+            <button class="role-btn" data-role="farmer" onclick="setRole('farmer')">Farmer</button>
+        </div>
+        <div class="top-actions">
+            <div class="icon-btn">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6"/></svg>
+                <div class="badge">3</div>
+            </div>
+            <div class="icon-btn">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+                <div class="badge">2</div>
+            </div>
+            <div class="user-chip">
+                <img src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=faces" alt="">
+                <div>
+                    <div class="user-name">Aman Kumar</div>
+                    <div class="user-role" id="userRoleLabel">Consumer</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="nav-role" data-role="consumer">
+            <a class="nav-item active" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>
+                Dashboard
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M4 9h16v10a1 1 0 01-1 1H5a1 1 0 01-1-1z"/></svg>
+                Marketplace
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6"/></svg>
+                My Cart <span class="nav-count">3</span>
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+                My Orders
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>
+                Wishlist
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+                Profile
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Addresses
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9c.4.5.9.9 1.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+                Settings
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+                Logout
+            </a>
+        </div>
+
+        <div class="nav-role" data-role="farmer">
+            <a class="nav-item active" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>
+                Dashboard
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M4 9h16v10a1 1 0 01-1 1H5a1 1 0 01-1-1z"/></svg>
+                My Listings <span class="nav-count">12</span>
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+                Orders Received <span class="nav-count">5</span>
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                Earnings
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Add Produce
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                Buyers
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Farm Profile
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9c.4.5.9.9 1.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+                Settings
+            </a>
+            <a class="nav-item" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+                Logout
+            </a>
+        </div>
+
+        <div class="support-panel" data-role="consumer">
+            <div class="support-card">
+                <h4>Support Local Farmers</h4>
+                <p>Your purchase helps farmers grow better and reach more customers.</p>
+            </div>
+        </div>
+        <div class="support-panel" data-role="farmer">
+            <div class="support-card">
+                <h4>Grow your reach</h4>
+                <p>Complete your farm profile to appear higher in buyer search results.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="layout role-layout" data-role="consumer">
+            <div>
+                <div class="hero">
+                    <div class="hero-eyebrow">This week's harvest</div>
+                    <h1>Fresh &amp; healthy, straight from the field</h1>
+                    <p>Every crate ships within a day of picking. Eat well, and know exactly whose farm it came from.</p>
+                    <button class="btn-primary">
+                        Shop now
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                </div>
+
+                <div class="cats">
+                    <div class="cat"><div class="cat-icon">▦</div>All Categories</div>
+                    <div class="cat"><div class="cat-icon">🌾</div>Grains</div>
+                    <div class="cat"><div class="cat-icon">🥬</div>Vegetables</div>
+                    <div class="cat"><div class="cat-icon">🍎</div>Fruits</div>
+                    <div class="cat"><div class="cat-icon">🫘</div>Pulses</div>
+                    <div class="cat"><div class="cat-icon">🫒</div>Oils</div>
+                    <div class="cat"><div class="cat-icon">🥛</div>Dairy</div>
+                    <div class="cat"><div class="cat-icon">🌶️</div>Spices</div>
+                </div>
+
+                <div class="section-head">
+                    <h2>Top products</h2>
+                    <a class="link" href="#">View all →</a>
+                </div>
+
+                <div class="products">
+                    <div class="p-card">
+                        <div class="p-img"><span style="font-size:44px;">🌾</span><div class="p-fav">♡</div></div>
+                        <div class="p-body">
+                            <div class="p-name">Wheat</div>
+                            <div class="p-desc">Premium quality wheat</div>
+                            <div class="p-price">₹40 <span>/ kg</span></div>
+                            <div class="p-avail">Available: 466 kg</div>
+                            <button class="btn-add">🛒 Add to Cart</button>
+                        </div>
+                    </div>
+                    <div class="p-card">
+                        <div class="p-img"><span style="font-size:44px;">🍚</span><div class="p-fav">♡</div></div>
+                        <div class="p-body">
+                            <div class="p-name">Rice</div>
+                            <div class="p-desc">Good quality rice</div>
+                            <div class="p-price">₹60 <span>/ kg</span></div>
+                            <div class="p-avail">Available: 120 kg</div>
+                            <button class="btn-add">🛒 Add to Cart</button>
+                        </div>
+                    </div>
+                    <div class="p-card">
+                        <div class="p-img"><span style="font-size:44px;">🥔</span><div class="p-fav">♡</div></div>
+                        <div class="p-body">
+                            <div class="p-name">Potato</div>
+                            <div class="p-desc">Farm fresh potatoes</div>
+                            <div class="p-price">₹25 <span>/ kg</span></div>
+                            <div class="p-avail">Available: 200 kg</div>
+                            <button class="btn-add">🛒 Add to Cart</button>
+                        </div>
+                    </div>
+                    <div class="p-card">
+                        <div class="p-img"><span style="font-size:44px;">🍅</span><div class="p-fav">♡</div></div>
+                        <div class="p-body">
+                            <div class="p-name">Tomato</div>
+                            <div class="p-desc">Fresh red tomatoes</div>
+                            <div class="p-price">₹30 <span>/ kg</span></div>
+                            <div class="p-avail">Available: 180 kg</div>
+                            <button class="btn-add">🛒 Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dots">
+                    <div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+
+                <div class="perks">
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 16V6a1 1 0 011-1h9v11M14 9h4l3 3v4a1 1 0 01-1 1h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                        </div>
+                        <div><h4>Direct from farmers</h4><p>Products come straight from local farms.</p></div>
+                    </div>
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2c4 4 6 8 6 12a6 6 0 01-12 0c0-4 2-8 6-12z"/></svg>
+                        </div>
+                        <div><h4>100% fresh</h4><p>Fresh and natural products, always.</p></div>
+                    </div>
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+                        </div>
+                        <div><h4>Secure payment</h4><p>100% secure payments and transactions.</p></div>
+                    </div>
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 16V6a1 1 0 011-1h9v11M14 9h4l3 3v4a1 1 0 01-1 1h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                        </div>
+                        <div><h4>Fast delivery</h4><p>Quick delivery to your doorstep.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="rail-card">
+                    <div class="rail-head"><h3>My Cart (3)</h3><a class="link" href="#">View Cart →</a></div>
+                    <div class="cart-row">
+                        <div class="cart-thumb">🌾</div>
+                        <div class="cart-info"><div class="name">Wheat</div><div class="qty">5 kg</div></div>
+                        <div class="cart-price">₹200</div>
+                        <div class="cart-del">🗑</div>
+                    </div>
+                    <div class="cart-row">
+                        <div class="cart-thumb">🍚</div>
+                        <div class="cart-info"><div class="name">Rice</div><div class="qty">2 kg</div></div>
+                        <div class="cart-price">₹120</div>
+                        <div class="cart-del">🗑</div>
+                    </div>
+                    <div class="cart-row">
+                        <div class="cart-thumb">🍅</div>
+                        <div class="cart-info"><div class="name">Tomato</div><div class="qty">3 kg</div></div>
+                        <div class="cart-price">₹90</div>
+                        <div class="cart-del">🗑</div>
+                    </div>
+                    <div class="cart-total"><span>Total</span><span>₹410</span></div>
+                    <button class="btn-checkout">Proceed to Checkout</button>
+                </div>
+
+                <div class="rail-card">
+                    <div class="rail-head"><h3>Recent Orders</h3><a class="link" href="#">View All →</a></div>
+                    <div class="order-row">
+                        <div class="order-top"><span>Order #ORD1004</span><span>₹410</span></div>
+                        <div class="order-bottom"><span class="order-date">02 May 2026</span><span class="status pending">PENDING</span></div>
+                    </div>
+                    <div class="order-row">
+                        <div class="order-top"><span>Order #ORD1003</span><span>₹620</span></div>
+                        <div class="order-bottom"><span class="order-date">28 Apr 2026</span><span class="status delivered">DELIVERED</span></div>
+                    </div>
+                    <div class="order-row">
+                        <div class="order-top"><span>Order #ORD1002</span><span>₹330</span></div>
+                        <div class="order-bottom"><span class="order-date">20 Apr 2026</span><span class="status delivered">DELIVERED</span></div>
+                    </div>
+                    <div class="order-row">
+                        <div class="order-top"><span>Order #ORD1001</span><span>₹250</span></div>
+                        <div class="order-bottom"><span class="order-date">15 Apr 2026</span><span class="status cancelled">CANCELLED</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layout role-layout" data-role="farmer">
+            <div>
+                <div class="hero">
+                    <div class="hero-eyebrow">Season overview</div>
+                    <h1>Turn your harvest into steady income</h1>
+                    <p>Twelve active listings are live for buyers right now. Keep stock levels current so orders keep landing.</p>
+                    <button class="btn-primary">
+                        Add produce
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                </div>
+
+                <div class="stats-row" style="margin-top:22px;">
+                    <div class="stat-card">
+                        <div class="stat-top">
+                            <div class="stat-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            </div>
+                            <span class="stat-trend">+12.4%</span>
+                        </div>
+                        <div class="stat-value">₹48,600</div>
+                        <div class="stat-label">Revenue this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-top">
+                            <div class="stat-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l1-5h16l1 5M4 9h16v10a1 1 0 01-1 1H5a1 1 0 01-1-1z"/></svg>
+                            </div>
+                            <span class="stat-trend">+2</span>
+                        </div>
+                        <div class="stat-value">12</div>
+                        <div class="stat-label">Active listings</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-top">
+                            <div class="stat-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+                            </div>
+                            <span class="stat-trend down">Needs action</span>
+                        </div>
+                        <div class="stat-value">5</div>
+                        <div class="stat-label">Orders pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-top">
+                            <div class="stat-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>
+                            </div>
+                            <span class="stat-trend">4.8 ★</span>
+                        </div>
+                        <div class="stat-value">96%</div>
+                        <div class="stat-label">Buyer satisfaction</div>
+                    </div>
+                </div>
+
+                <div class="section-head" style="margin-top:8px;">
+                    <h2>My listings</h2>
+                    <a class="link" href="#">Manage all →</a>
+                </div>
+
+                <div class="products">
+                    <div class="p-card">
+                        <div class="p-img" style="position:relative;"><span style="font-size:44px;">🌾</span></div>
+                        <div class="p-body">
+                            <div class="p-name">Wheat</div>
+                            <div class="p-desc">Premium quality wheat</div>
+                            <div class="p-price">₹40 <span>/ kg</span></div>
+                            <div class="p-avail">466 kg in stock</div>
+                            <div class="stock-bar"><div class="stock-fill" style="width:82%;"></div></div>
+                            <div class="listing-actions">
+                                <button class="btn-edit">✎ Edit</button>
+                                <button class="btn-edit">Stock</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-card">
+                        <div class="p-img" style="position:relative;"><span style="font-size:44px;">🍚</span><div class="low-stock">LOW STOCK</div></div>
+                        <div class="p-body">
+                            <div class="p-name">Rice</div>
+                            <div class="p-desc">Good quality rice</div>
+                            <div class="p-price">₹60 <span>/ kg</span></div>
+                            <div class="p-avail">120 kg in stock</div>
+                            <div class="stock-bar"><div class="stock-fill" style="width:24%;"></div></div>
+                            <div class="listing-actions">
+                                <button class="btn-edit">✎ Edit</button>
+                                <button class="btn-edit">Stock</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-card">
+                        <div class="p-img" style="position:relative;"><span style="font-size:44px;">🥔</span></div>
+                        <div class="p-body">
+                            <div class="p-name">Potato</div>
+                            <div class="p-desc">Farm fresh potatoes</div>
+                            <div class="p-price">₹25 <span>/ kg</span></div>
+                            <div class="p-avail">200 kg in stock</div>
+                            <div class="stock-bar"><div class="stock-fill" style="width:58%;"></div></div>
+                            <div class="listing-actions">
+                                <button class="btn-edit">✎ Edit</button>
+                                <button class="btn-edit">Stock</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-card">
+                        <div class="p-img" style="position:relative;"><span style="font-size:44px;">🍅</span></div>
+                        <div class="p-body">
+                            <div class="p-name">Tomato</div>
+                            <div class="p-desc">Fresh red tomatoes</div>
+                            <div class="p-price">₹30 <span>/ kg</span></div>
+                            <div class="p-avail">180 kg in stock</div>
+                            <div class="stock-bar"><div class="stock-fill" style="width:66%;"></div></div>
+                            <div class="listing-actions">
+                                <button class="btn-edit">✎ Edit</button>
+                                <button class="btn-edit">Stock</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="perks">
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+                        </div>
+                        <div><h4>Verified farmer</h4><p>Your farm has been verified and trusted by buyers.</p></div>
+                    </div>
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+                        </div>
+                        <div><h4>Direct payouts</h4><p>Get paid straight to your bank, no middlemen.</p></div>
+                    </div>
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                        </div>
+                        <div><h4>Growing buyer network</h4><p>Reach more households across your region.</p></div>
+                    </div>
+                    <div class="perk">
+                        <div class="perk-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 4 5-8"/></svg>
+                        </div>
+                        <div><h4>Demand insights</h4><p>See which crops are trending with buyers nearby.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="rail-card">
+                    <div class="rail-head"><h3>Orders to fulfil</h3><a class="link" href="#">View all →</a></div>
+                    <div class="fo-row">
+                        <div class="fo-avatar">RS</div>
+                        <div class="fo-info"><div class="name">Riya Sharma</div><div class="item">Wheat · 5 kg</div></div>
+                        <div class="fo-right">
+                            <div class="fo-price">₹200</div>
+                            <div class="fo-actions"><button class="fo-btn accept">Accept</button><button class="fo-btn reject">Decline</button></div>
+                        </div>
+                    </div>
+                    <div class="fo-row">
+                        <div class="fo-avatar">KP</div>
+                        <div class="fo-info"><div class="name">Karan Patel</div><div class="item">Tomato · 8 kg</div></div>
+                        <div class="fo-right">
+                            <div class="fo-price">₹240</div>
+                            <div class="fo-actions"><button class="fo-btn accept">Accept</button><button class="fo-btn reject">Decline</button></div>
+                        </div>
+                    </div>
+                    <div class="fo-row">
+                        <div class="fo-avatar">MI</div>
+                        <div class="fo-info"><div class="name">Meera Iyer</div><div class="item">Rice · 3 kg</div></div>
+                        <div class="fo-right">
+                            <div class="fo-price">₹180</div>
+                            <div class="fo-actions"><button class="fo-btn accept">Accept</button><button class="fo-btn reject">Decline</button></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rail-card">
+                    <div class="rail-head"><h3>Payout</h3></div>
+                    <div class="payout-figure"><span class="amt">₹48,600</span><span class="cur">available</span></div>
+                    <div class="payout-note">Next automatic payout: 10 Sep 2026, to bank account ending 4821.</div>
+                    <button class="btn-withdraw">Withdraw now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button class="fab">💬 Need Help?</button>
+
+<script src="script.js"></script>
+
+</body>
+</html>
