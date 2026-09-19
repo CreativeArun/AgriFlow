@@ -45,6 +45,21 @@ def _detect_crop_species(
 
     # 1. Exact or keyword detection from filename / crop_hint
     fruit_keywords = [
+        ("almond", "Almonds"),
+        ("badam", "Almonds"),
+        ("cashew", "Cashew"),
+        ("kaju", "Cashew"),
+        ("walnut", "Walnut"),
+        ("akhrot", "Walnut"),
+        ("pista", "Pistachio"),
+        ("pistachio", "Pistachio"),
+        ("peanut", "Groundnut / Peanut"),
+        ("groundnut", "Groundnut / Peanut"),
+        ("mungfali", "Groundnut / Peanut"),
+        ("date", "Dates"),
+        ("khajoor", "Dates"),
+        ("coconut", "Coconut"),
+        ("nariyal", "Coconut"),
         ("apple", "Apple"),
         ("banana", "Banana"),
         ("mango", "Mango"),
@@ -57,6 +72,7 @@ def _detect_crop_species(
         ("guava", "Guava"),
         ("strawberry", "Strawberry"),
         ("pomegranate", "Pomegranate"),
+        ("anar", "Pomegranate"),
         ("lemon", "Lemon"),
         ("lime", "Lemon"),
         ("onion", "Onion"),
@@ -69,17 +85,53 @@ def _detect_crop_species(
         ("chilli", "Green Chilli"),
         ("chili", "Green Chilli"),
         ("mirchi", "Green Chilli"),
+        ("capsicum", "Capsicum (Bell Pepper)"),
+        ("shimla", "Capsicum (Bell Pepper)"),
+        ("cucumber", "Cucumber"),
+        ("kheera", "Cucumber"),
         ("carrot", "Carrot"),
         ("garlic", "Garlic"),
         ("ginger", "Ginger"),
+        ("adrak", "Ginger"),
+        ("turmeric", "Turmeric"),
+        ("haldi", "Turmeric"),
         ("mustard", "Mustard"),
+        ("sarson", "Mustard"),
         ("brinjal", "Brinjal"),
         ("eggplant", "Brinjal"),
+        ("baingan", "Brinjal"),
         ("cabbage", "Cabbage"),
         ("cauliflower", "Cauliflower"),
+        ("gobhi", "Cauliflower"),
+        ("bhindi", "Ladyfinger (Bhindi)"),
+        ("okra", "Ladyfinger (Bhindi)"),
+        ("ladyfinger", "Ladyfinger (Bhindi)"),
         ("cotton", "Cotton"),
         ("sugarcane", "Sugarcane"),
+        ("jackfruit", "Jackfruit"),
+        ("jackfruits", "Jackfruit"),
+        ("kathal", "Jackfruit"),
+        ("artocarpus", "Jackfruit"),
+        ("chakka", "Jackfruit"),
+        ("halasu", "Jackfruit"),
+        ("panasa", "Jackfruit"),
+        ("custard apple", "Custard Apple"),
+        ("sitaphal", "Custard Apple"),
+        ("sharifa", "Custard Apple"),
+        ("sapodilla", "Sapodilla (Chikoo)"),
+        ("chikoo", "Sapodilla (Chikoo)"),
+        ("chiku", "Sapodilla (Chikoo)"),
+        ("guava", "Guava"),
+        ("amrood", "Guava"),
+        ("amrud", "Guava"),
+        ("lychee", "Litchi"),
+        ("litchi", "Litchi"),
+        ("fig", "Fig (Anjeer)"),
+        ("anjeer", "Fig (Anjeer)"),
+        ("amla", "Amla (Indian Gooseberry)"),
+        ("gooseberry", "Amla (Indian Gooseberry)"),
         ("cumin", "Cumin"),
+        ("jeera", "Cumin"),
         ("pulse", "Pulses (Dal/Gram)"),
         ("plus", "Pulses (Dal/Gram)"),
         ("dal", "Pulses (Dal/Gram)"),
@@ -90,6 +142,11 @@ def _detect_crop_species(
         ("chana", "Chana (Gram)"),
         ("gram", "Chana (Gram)"),
         ("soyabean", "Soyabean"),
+        ("soybean", "Soyabean"),
+        ("dragon", "Dragon Fruit"),
+        ("kiwi", "Kiwi"),
+        ("pineapple", "Pineapple"),
+        ("avocado", "Avocado"),
     ]
 
     for kw, label in fruit_keywords:
@@ -103,6 +160,7 @@ def _detect_crop_species(
 
     red_crimson_apple = 0
     red_scarlet_tomato = 0
+    red_pomegranate = 0
     yellow_banana = 0
     yellow_mango = 0
     orange_citrus = 0
@@ -115,19 +173,44 @@ def _detect_crop_species(
     earthy_potato = 0
     golden_wheat = 0
     granular_pulse = 0
+    tan_almond = 0
+    dark_dates = 0
+    jackfruit_count = 0
+    cane_sugarcane = 0
     white_cotton = 0
     rice_grain = 0
 
     for r, g, b in pixels:
         brightness = (r + g + b) / 3.0
-        if brightness < 25:
+        if brightness < 20:
             continue
 
+        # White / Fluffy Cotton Fibers
         if r > 215 and g > 215 and b > 210:
             white_cotton += 1
+
+        # Tan / Nutty Golden Brown: Almonds / Cashew / Walnuts
+        elif 100 < r < 240 and 50 < g < 175 and 20 < b < 135 and r > g and (r - b) > 20:
+            tan_almond += 1
+
+        # Dark Amber / Deep Brown: Dates / Tamarind
+        elif 60 < r < 140 and 30 < g < 90 and 15 < b < 65 and r > g * 1.35 and brightness < 90:
+            dark_dates += 1
+
+        # Jackfruit: Large, bumpy yellowish-green/olive rind with balanced red/green
+        elif 55 < r < 185 and 60 < g < 185 and b < 110 and abs(r - g) < 42 and (r + g) > b * 2.2 and (0.55 <= aspect_ratio <= 1.7):
+            jackfruit_count += 1
+
+        # Sugarcane: Yellowish-green cane stalks (elongated stalks or extreme aspect ratio)
+        elif g > 75 and g > b * 1.28 and (g >= r * 0.88 or (abs(r - g) < 35 and g > 95 and b < 115)) and (aspect_ratio > 1.6 or aspect_ratio < 0.65):
+            cane_sugarcane += 1
+
+        # Red Apple vs Red Tomato vs Pomegranate
         elif r > 140 and r > g * 1.35 and r > b * 1.35:
             if r > 175 and g < 75 and b < 70:
                 red_scarlet_tomato += 1
+            elif r > 150 and b > 45 and g < 60:
+                red_pomegranate += 1
             else:
                 red_crimson_apple += 1
         elif r > 180 and 85 < g < 155 and b < 75 and (r - g) > 35:
@@ -157,16 +240,24 @@ def _detect_crop_species(
                 green_grapes += 1
             else:
                 green_leafy += 1
-        elif b > 65 and r > 55 and (b + r) > g * 2.0:
+
+        # Violet / Purple: Onion vs Brinjal vs Grapes
+        elif b > 65 and r > 55 and (b + r) > g * 2.2 and (b - g) > 15:
             if r > b * 1.15:
                 purple_onion += 1
             else:
                 violet_brinjal += 1
-        elif 110 < r < 200 and 90 < g < 170 and 50 < b < 130 and abs(r - g) < 45 and b < g:
+
+        # Earthy Potato: Brownish earthy skin (r > g > b)
+        elif 110 < r < 200 and 85 < g < 165 and 45 < b < 125 and r > g and (r - g) >= 8 and (g - b) >= 15:
             earthy_potato += 1
 
     counts = {
-        "Sugarcane": int(sugarcane_stalk),
+        "Jackfruit": jackfruit_count,
+        "Sugarcane": max(cane_sugarcane, int(sugarcane_stalk)),
+        "Almonds": tan_almond,
+        "Dates": dark_dates,
+        "Pomegranate": red_pomegranate,
         "Apple": red_crimson_apple,
         "Tomato": red_scarlet_tomato,
         "Banana": yellow_banana,
@@ -190,11 +281,13 @@ def _detect_crop_species(
     if best_count < total * 0.08:
         if crop_hint and crop_hint not in ("Produce", "Harvest Produce"):
             return (crop_hint, 0.90)
+        if tan_almond > 0:
+            return ("Almonds", 0.92)
         if yellow_banana + yellow_mango > red_crimson_apple:
             return ("Banana / Mango", 0.85)
         return ("Harvest Produce", 0.85)
 
-    return (best_crop, round(min(0.98, 0.84 + (best_count / total) * 0.25), 2))
+    return (best_crop, round(min(0.98, 0.85 + (best_count / total) * 0.25), 2))
 
 
 def _local_vision_analysis(
@@ -313,6 +406,7 @@ def _local_vision_analysis(
 
         # Fruit-specific shelf life calculation
         fruit_shelf_lives = {
+            "Jackfruit": 10,
             "Apple": 28,
             "Orange": 21,
             "Potato": 35,
@@ -379,83 +473,81 @@ def _local_vision_analysis(
         })
 
 
+def _optimize_image_for_vlm(image_data_url: str) -> str:
+    """Resize and compress image to <60KB so VLM inference over network is fast."""
+    try:
+        if not image_data_url or "," not in image_data_url:
+            return image_data_url
+        _, b64 = image_data_url.split(",", 1)
+        raw_bytes = base64.b64decode(b64)
+        img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
+        img.thumbnail((640, 640), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        optimized_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{optimized_b64}"
+    except Exception as exc:
+        logger.warning("Image optimization failed: %s", exc)
+        return image_data_url
+
+
 def analyze_image(
     image_data_url: str,
     crop_hint: str = "",
     filename: str = "",
 ) -> str:
     """
-    Send an image to the hosted VLM, or gracefully fallback to local
-    computer-vision produce assessment if HF_TOKEN is not configured or unavailable.
+    Send produce photograph to Google Gemma-3-4B-IT hosted Vision-Language Model
+    for produce identification, defect quantification, and grade assessment.
+    Gracefully falls back to local computer-vision evaluation if network/token is unavailable.
     """
-
     if not image_data_url or not str(image_data_url).startswith("data:image/"):
         return _local_vision_analysis(image_data_url, crop_hint=crop_hint, filename=filename)
 
+    # 1. Try Hosted Vision-Language Model (Gemma-3-4b-it)
     try:
         client = get_client()
-    except Exception as exc:
-        logger.info("HF_TOKEN not available (%s). Using local computer-vision evaluation.", exc)
-        return _local_vision_analysis(image_data_url, crop_hint=crop_hint, filename=filename)
+        optimized_url = _optimize_image_for_vlm(image_data_url)
 
-    try:
+        prompt = (
+            "You are an agricultural computer vision produce quality inspector.\n"
+            "Analyze the provided crop/produce image.\n"
+            "Identify the exact produce species (e.g. Jackfruit, Almonds, Sugarcane, Dates, Onion, Tomato, Potato, Apple, Banana, Mango, Wheat, Rice, Garlic, Ginger, etc.).\n"
+            "Assess the visual quality, defects, surface damage, rot, and assign an official grade (A, B, or C).\n\n"
+            "Respond ONLY with a valid JSON object matching this exact schema:\n"
+            "{\n"
+            '  "produce_name": "<exact name of produce>",\n'
+            '  "score": <number between 10 and 100>,\n'
+            '  "grade": "<A, B, or C>",\n'
+            '  "good_percentage": <number 0-100>,\n'
+            '  "damaged_percentage": <number 0-100>,\n'
+            '  "rotten_percentage": <number 0-100>,\n'
+            '  "description": "<concise 2-sentence quality evaluation>"\n'
+            "}\n"
+            "Do NOT include any text outside the JSON object."
+        )
+
         response = client.chat_completion(
             model=MODEL_ID,
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_data_url,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": (
-                                "You are an agricultural produce quality "
-                                "assessment system. Analyze the visible agricultural produce "
-                                "(crop, fruit, vegetable, stalk, or grain) in the image. "
-                                "Do not evaluate baskets, packaging, clothing, "
-                                "background objects, or other non-produce items. "
-                                "\n\n"
-                                "Return ONLY valid JSON with exactly these "
-                                "fields: produce_name, score, grade, good_percentage, "
-                                "damaged_percentage, rotten_percentage, "
-                                "description. "
-                                "\n\n"
-                                "produce_name: the exact name of the identified "
-                                "crop, fruit, grain, or produce in the image (e.g. Sugarcane, "
-                                "Onion, Tomato, Potato, Apple, Mango, Basmati Rice, Wheat, "
-                                "Banana, Cotton, etc.). "
-                                "score: overall visual quality from 0 to 100. "
-                                "grade: A for high quality, B for moderate "
-                                "quality, C for poor quality. "
-                                "good_percentage: estimated percentage of "
-                                "visible produce that appears healthy and "
-                                "marketable. "
-                                "damaged_percentage: estimated percentage with "
-                                "visible physical damage, bruising, cuts, or "
-                                "other defects. "
-                                "rotten_percentage: estimated percentage with "
-                                "visible rot, mold, decay, or severe spoilage. "
-                                "The three percentages should approximately "
-                                "sum to 100. "
-                                "\n\n"
-                                "If the image does not contain identifiable "
-                                "agricultural produce, set score to 0, grade "
-                                "to C, and set all three percentages to 0. "
-                                "Explain the issue in description."
-                            ),
-                        },
-                    ],
+                        {"type": "image_url", "image_url": {"url": optimized_url}},
+                        {"type": "text", "text": prompt}
+                    ]
                 }
             ],
             max_tokens=300,
+            temperature=0.1
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if content and "{" in content:
+            logger.info("Successfully analyzed image using Gemma-3-4B VLM: %s", content[:100])
+            return content
     except Exception as exc:
         logger.warning("Hosted VLM inference failed (%s). Falling back to local vision engine.", exc)
-        return _local_vision_analysis(image_data_url, crop_hint=crop_hint, filename=filename)
+
+    # 2. Fallback to local vision engine
+    return _local_vision_analysis(image_data_url, crop_hint=crop_hint, filename=filename)
 

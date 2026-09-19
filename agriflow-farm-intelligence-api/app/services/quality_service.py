@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 from app.models.quality_model import analyze_image
 from app.schemas.quality import QualityResponse
+from app.services.language_service import format_quality_description, normalize_language
 
 
 def _parse_model_json(raw_result: str) -> dict:
@@ -56,11 +57,14 @@ def analyze_quality(
     image_data_url: str,
     crop_hint: str = "",
     filename: str = "",
+    language: str = "en",
 ) -> QualityResponse:
     """
     Analyze agricultural produce using the hosted VLM or local computer vision.
 
     No model is trained or loaded locally.
+    Analyze agricultural produce using the hosted VLM or local computer vision
+    with multilingual localization.
     """
 
     try:
@@ -106,5 +110,51 @@ def analyze_quality(
             "damaged": quality.damaged_percentage,
             "rotten": quality.rotten_percentage,
         }
+
+    fruit_shelf_lives = {
+        "Almonds": 180,
+        "Cashew": 150,
+        "Walnut": 120,
+        "Dates": 120,
+        "Wheat": 120,
+        "Pulses (Dal/Gram)": 180,
+        "Moong Dal": 180,
+        "Chana (Gram)": 180,
+        "Tur (Arhar)": 180,
+        "Jackfruit": 10,
+        "Apple": 28,
+        "Orange": 21,
+        "Potato": 35,
+        "Onion": 45,
+        "Banana": 6,
+        "Mango": 8,
+        "Tomato": 9,
+        "Grapes": 7,
+        "Green Chilli": 10,
+        "Carrot": 14,
+        "Brinjal": 6,
+    }
+    base_shelf = fruit_shelf_lives.get(quality.produce_name, 14)
+    shelf_factor = 1.0 if quality.grade == "A" else 0.55 if quality.grade == "B" else 0.25
+    quality.shelf_life_days = max(2, int(base_shelf * shelf_factor))
+
+    # If a rich VLM description exists and language is English, preserve the model's description.
+    # Otherwise, apply multilingual localized description formatting.
+    if language and language != "en":
+        quality.description = format_quality_description(
+            grade=quality.grade,
+            crop=quality.produce_name,
+            damaged_pct=quality.damaged_percentage,
+            rotten_pct=quality.rotten_percentage,
+            lang=language,
+        )
+    elif not quality.description:
+        quality.description = format_quality_description(
+            grade=quality.grade,
+            crop=quality.produce_name,
+            damaged_pct=quality.damaged_percentage,
+            rotten_pct=quality.rotten_percentage,
+            lang="en",
+        )
 
     return quality

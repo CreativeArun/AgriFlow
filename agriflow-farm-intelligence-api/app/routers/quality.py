@@ -17,20 +17,23 @@ router = APIRouter(
 async def analyze_produce_quality(
     image: Optional[UploadFile] = File(None),
     crop_hint: Optional[str] = Form(None),
+    language: Optional[str] = Form("en"),
 ):
     """
     Analyze agricultural produce from an uploaded image.
+    Analyze agricultural produce from an uploaded image with multilingual support.
     """
     filename = image.filename if image and image.filename else ""
     hint = crop_hint or ""
+    lang = language or "en"
 
     if image is None:
-        return analyze_quality("", crop_hint=hint, filename=filename)
+        return analyze_quality("", crop_hint=hint, filename=filename, language=lang)
 
     image_bytes = await image.read()
 
     if not image_bytes or not image.content_type or not image.content_type.startswith("image/"):
-        return analyze_quality("", crop_hint=hint, filename=filename)
+        return analyze_quality("", crop_hint=hint, filename=filename, language=lang)
 
     encoded_image = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -38,5 +41,5 @@ async def analyze_produce_quality(
         f"data:{image.content_type};base64,{encoded_image}"
     )
 
-    return analyze_quality(image_data_url, crop_hint=hint, filename=filename)
+    return analyze_quality(image_data_url, crop_hint=hint, filename=filename, language=lang)
 

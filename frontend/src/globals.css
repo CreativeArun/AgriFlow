@@ -1416,11 +1416,16 @@ tbody tr:hover {
 .map-toolbar {
   height: 62px;
   padding: 0 22px;
+  min-height: 52px;
+  height: auto;
+  padding: 10px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--card);
   border-bottom: 1.5px solid var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .map-toolbar b {
@@ -3285,6 +3290,96 @@ tbody tr:hover {
   border: 1.5px solid var(--border);
   flex-shrink: 0;
   box-shadow: var(--shadow-sm);
+}
+
+/* ─── Enterprise Leaflet Map Styles ───────────────────────────────────────── */
+.vehicle-leaflet-marker {
+  transition: transform 0.25s linear;
+  will-change: transform;
+}
+
+.vehicle-marker-inner {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.radar-geofence-pulse {
+  animation: radar-pulse 2.2s infinite ease-out;
+  pointer-events: none;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+.leaflet-route-flow path {
+  animation: dash-flow 1.2s linear infinite;
+}
+
+.map-telematics-hud {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  color: #f8fafc;
+  border-radius: 12px;
+}
+
+.map-hud-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.map-hud-stat:last-child {
+  border-right: none;
+}
+
+.map-layer-pill {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ─── Reduced Motion ──────────────────────────────────────────────────────── */

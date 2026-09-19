@@ -18,6 +18,11 @@ import {
   farmerService, buyerService, aiService, logisticsService,
   cropBaselines, cropCategories, mandiLocations, getProduceImage
 } from '../lib/api/services.js'
+import { useTranslation } from 'react-i18next'
+import LanguageSelector from './LanguageSelector.jsx'
+import VoiceInputButton from './VoiceInputButton.jsx'
+import TextToSpeechButton from './TextToSpeechButton.jsx'
+import AIAssistantModal from './AIAssistantModal.jsx'
 import MapLeaflet from './MapLeaflet.jsx'
 
 const icons = {
@@ -141,6 +146,7 @@ function MiniChart({ points, color = '#5d965c' }) {
 
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
 function Sidebar({ role, active, setActive, orderCount = 0 }) {
+  const { t } = useTranslation()
   const nav = role === 'farmer' ? farmerNav : buyerNav
   return (
     <aside className="sidebar">
@@ -149,13 +155,14 @@ function Sidebar({ role, active, setActive, orderCount = 0 }) {
         <div className="workspace-avatar">{role === 'farmer' ? 'RK' : 'FC'}</div>
         <div>
           <p className="workspace-name">{role === 'farmer' ? 'Ramesh Kumar' : 'FreshCart Foods'}</p>
-          <p className="workspace-role">{role === 'farmer' ? 'Farmer account' : 'Buyer account'}</p>
+          <p className="workspace-role">{role === 'farmer' ? t('roles.farmer_portal') : t('roles.buyer_portal')}</p>
         </div>
         <ChevronDown className="ml-auto" />
       </div>
       <nav className="sidebar-nav">
         {nav.map(item => {
           const Icon = icons[item] ?? Package
+          const translatedLabel = t(`nav.${item}`, item)
           return (
             <button
               key={item}
@@ -163,20 +170,20 @@ function Sidebar({ role, active, setActive, orderCount = 0 }) {
               className={`nav-item ${active === item ? 'active' : ''}`}
             >
               <Icon />
-              {item}
+              <span>{translatedLabel}</span>
               {item === 'Orders' && orderCount > 0 && <span className="nav-count">{orderCount}</span>}
             </button>
           )
         })}
       </nav>
       <div className="sidebar-bottom">
-        <button className="nav-item"><CircleHelp />Help centre</button>
-        <button className="nav-item"><Settings />Settings</button>
+        <button className="nav-item"><CircleHelp />{t('common.details', 'Help centre')}</button>
+        <button className="nav-item"><Settings />{t('profile.title', 'Settings')}</button>
         <div className="season-note">
           <CloudSun />
           <div>
-            <b>Good season ahead</b>
-            <span>Market activity is up 12%</span>
+            <b>{t('dashboard.welcome_farmer', 'Good season ahead')}</b>
+            <span>{t('brand', 'AgriFlow')} Intelligence</span>
           </div>
         </div>
       </div>
@@ -185,20 +192,39 @@ function Sidebar({ role, active, setActive, orderCount = 0 }) {
 }
 
 /* ─── Topbar ──────────────────────────────────────────────────────────────── */
-function Topbar({ role, setRole }) {
+function Topbar({ role, setRole, onOpenAssistant }) {
+  const { t } = useTranslation()
   return (
     <header className="topbar">
       <button className="mobile-menu" aria-label="Open navigation menu"><Menu /></button>
       <div className="breadcrumb">
         <span>Workspace</span>
+        <span>{t('brand')}</span>
         <span>/</span>
-        <b>{role === 'farmer' ? 'Farmer dashboard' : 'Buyer dashboard'}</b>
+        <b>{role === 'farmer' ? t('roles.farmer_portal') : t('roles.buyer_portal')}</b>
       </div>
       <div className="top-actions">
+        {/* Multilingual Voice AI Assistant Trigger */}
+        <button
+          type="button"
+          onClick={onOpenAssistant}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#1B4D3E] border border-emerald-200/80 text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
+          aria-label={t('common.ask_ai')}
+        >
+          <Sparkles className="size-4 text-[#1B4D3E] animate-spin" style={{ animationDuration: '4s' }} />
+          <span className="hidden sm:inline">{t('common.ask_ai')}</span>
+          <span className="sm:hidden">AI</span>
+        </button>
+
+        {/* Global Language Selector */}
+        <LanguageSelector />
+
+        {/* Role Switcher */}
         <div className="role-switch">
-          <button className={role === 'farmer' ? 'selected' : ''} onClick={() => setRole('farmer')}>Farmer</button>
-          <button className={role === 'buyer' ? 'selected' : ''} onClick={() => setRole('buyer')}>Buyer</button>
+          <button className={role === 'farmer' ? 'selected' : ''} onClick={() => setRole('farmer')}>{t('roles.farmer')}</button>
+          <button className={role === 'buyer' ? 'selected' : ''} onClick={() => setRole('buyer')}>{t('roles.buyer')}</button>
         </div>
+
         <button className="icon-button" aria-label="View notifications"><Bell /><i /></button>
         <div className="top-avatar" aria-label={role === 'farmer' ? 'Ramesh Kumar' : 'FreshCart Foods'}>{role === 'farmer' ? 'RK' : 'FC'}</div>
       </div>
@@ -274,6 +300,7 @@ function ShipmentCard({ setActive, activeOrder }) {
 
 /* ─── Quality Card ────────────────────────────────────────────────────────── */
 function QualityCard({ qualityData }) {
+  const { t } = useTranslation()
   const data = qualityData || {
     produce_name: 'Onion',
     grade: 'A',
@@ -299,34 +326,38 @@ function QualityCard({ qualityData }) {
             className="quality-photo-thumb"
           />
           <div>
-            <p className="eyebrow">AI Visual quality assessment</p>
-            <h3>{data.produce_name || 'Harvest Produce'} <Badge tone={rawGrade === 'A' ? 'green' : rawGrade === 'B' ? 'amber' : 'red'}>{`Grade ${rawGrade}`}</Badge></h3>
+            <p className="eyebrow">{t('quality.title', 'AI Visual quality assessment')}</p>
+            <h3>{data.produce_name || 'Harvest Produce'} <Badge tone={rawGrade === 'A' ? 'green' : rawGrade === 'B' ? 'amber' : 'red'}>{`${t('common.grade', 'Grade')} ${rawGrade}`}</Badge></h3>
           </div>
         </div>
         <div className="quality-score">{score}<span>/100</span></div>
       </div>
-      <p className="muted">{data.description || 'Analyzed via Computer Vision model.'}</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+        <p className="muted" style={{ margin: 0 }}>{data.description || t('quality.subtitle', 'Analyzed via Computer Vision model.')}</p>
+        {data.description && <TextToSpeechButton text={data.description} showLabel={false} size="sm" />}
+      </div>
       <div className="quality-bars">
         <div>
-          <span>Good produce <b>{defects.good_produce}%</b></span>
+          <span>{t('quality.good_produce', 'Good produce')} <b>{defects.good_produce}%</b></span>
           <i><em style={{ width: `${defects.good_produce}%` }} /></i>
         </div>
         <div>
-          <span>Damaged <b>{defects.damaged}%</b></span>
+          <span>{t('quality.damaged', 'Damaged')} <b>{defects.damaged}%</b></span>
           <i><em className="amber" style={{ width: `${defects.damaged}%` }} /></i>
         </div>
         <div>
-          <span>Rotten <b>{defects.rotten}%</b></span>
+          <span>{t('quality.rotten', 'Rotten')} <b>{defects.rotten}%</b></span>
           <i><em className="red" style={{ width: `${defects.rotten}%` }} /></i>
         </div>
       </div>
-      <button className="text-button">View quality certificate <span>→</span></button>
+      <button className="text-button">{t('common.details', 'View quality certificate')} <span>→</span></button>
     </div>
   )
 }
 
 /* ─── Insight Card ────────────────────────────────────────────────────────── */
 function InsightCard({ crop = 'Onion', price = 2600, priceForecast, imageUrl }) {
+  const { t } = useTranslation()
   const currentPrice = price || 2600
   const expectedPrice = priceForecast?.projectedPrice
     ? priceForecast.projectedPrice
@@ -340,20 +371,23 @@ function InsightCard({ crop = 'Onion', price = 2600, priceForecast, imageUrl }) 
 
   const cropName = crop || priceForecast?.crop || 'Produce'
 
-  let headline = 'Price outlook is stable'
-  let recommendation = 'Steady market demand. Favorable window for consistent sales.'
+  let headline = t('forecasting.expected_change', 'Price outlook is stable')
   if (isRising) {
-    headline = 'Price is expected to rise'
-    recommendation = `Consider holding for 4–5 days for peak mandi prices (+${pctDiff.toFixed(1)}% expected).`
+    headline = t('price.rising', 'Price is expected to rise')
   } else if (isFalling) {
-    headline = 'Price expected to soften'
-    recommendation = `Higher market arrivals ahead. Recommend listing now to secure current rates (${pctDiff.toFixed(1)}%).`
+    headline = t('price.softening', 'Price expected to soften')
   }
+
+  const recommendation = priceForecast?.recommendation || (isRising
+    ? `Chronos-Bolt projects rising demand. Expected gain of +${pctDiff.toFixed(1)}%. Consider holding produce.`
+    : isFalling
+      ? `Mandi arrivals increasing. Expected price softening of ${pctDiff.toFixed(1)}%. Recommend listing promptly.`
+      : `Stable price momentum across mandi hubs. Favorable window for sales.`)
 
   return (
     <div className="card insight-card">
       <div className="insight-top">
-        <span className="ai-label"><Zap /> AI market insight</span>
+        <span className="ai-label"><Zap /> {t('brand')} AI Insight</span>
         <span className="insight-date">Chronos-Bolt Forecast</span>
       </div>
       <div className="insight-crop">
@@ -369,26 +403,30 @@ function InsightCard({ crop = 'Onion', price = 2600, priceForecast, imageUrl }) 
       </div>
       <div className="price-compare">
         <div>
-          <span>Current market price</span>
+          <span>{t('forecasting.current_rate', 'Current market price')}</span>
           <b>₹{currentPrice.toLocaleString()} <small>/ qtl</small></b>
         </div>
         {isFalling ? <ArrowDownRight style={{ color: '#c05646' }} /> : <ArrowUpRight />}
         <div>
-          <span>Expected in 5 days</span>
+          <span>{t('forecasting.projected_rate', 'Expected in 5 days')}</span>
           <b className={isFalling ? 'red-text' : 'green-text'}>₹{expectedPrice.toLocaleString()} <small>/ qtl</small></b>
         </div>
       </div>
       <div className="recommendation">
         <Check />
-        <p><b>Recommendation</b>{recommendation}</p>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+          <p style={{ margin: 0 }}><b>{t('common.info', 'Recommendation')}</b> {recommendation}</p>
+          <TextToSpeechButton text={recommendation} showLabel={false} size="sm" />
+        </div>
       </div>
-      <p className="disclaimer">Based on recent mandi price momentum &amp; AI forecast.</p>
+      <p className="disclaimer">{t('forecasting.subtitle', 'Based on recent mandi price momentum & AI forecast.')}</p>
     </div>
   )
 }
 
 /* ─── Lots Table ──────────────────────────────────────────────────────────── */
 function LotsTable({ setActive }) {
+  const { t } = useTranslation()
   const [lots, setLots] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -404,24 +442,24 @@ function LotsTable({ setActive }) {
 
   return (
     <div className="card lots-card">
-      <SectionHeader title="My produce lots" action="Add produce" onAction={() => setActive('Add Produce')} />
+      <SectionHeader title={t('dashboard.recent_lots', 'My produce lots')} action={t('dashboard.list_produce_btn', 'Add produce')} onAction={() => setActive('Add Produce')} />
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Crop</th>
-              <th>Quantity</th>
-              <th>Grade</th>
-              <th>Status</th>
-              <th>Expected price</th>
-              <th>Buyer</th>
+              <th>{t('orders.crop', 'Crop')}</th>
+              <th>{t('orders.quantity', 'Quantity')}</th>
+              <th>{t('common.grade', 'Grade')}</th>
+              <th>{t('common.status', 'Status')}</th>
+              <th>{t('common.price', 'Expected price')}</th>
+              <th>{t('orders.buyer', 'Buyer')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
                 <td colSpan="6" className="table-empty-cell">
-                  <Spinner label="Loading produce lots…" />
+                  <Spinner label={t('common.loading', 'Loading produce lots…')} />
                 </td>
               </tr>
             ) : lots.length === 0 ? (
@@ -429,7 +467,7 @@ function LotsTable({ setActive }) {
                 <td colSpan="6" className="table-empty-cell">
                   <div className="empty-state">
                     <Package />
-                    <b>No produce listed yet</b>
+                    <b>{t('dashboard.empty_lots', 'No produce listed yet')}</b>
                     <span>Click "Add produce" to list your harvest and start receiving buyer matches.</span>
                   </div>
                 </td>
@@ -465,6 +503,7 @@ function LotsTable({ setActive }) {
 
 /* ─── Farmer Dashboard ────────────────────────────────────────────────────── */
 function FarmerDashboard({ setActive, activeOrder }) {
+  const { t } = useTranslation()
   const [metrics, setMetrics] = useState({
     availableProduce: '2.5 tonnes',
     activeOrders: '03',
@@ -503,18 +542,18 @@ function FarmerDashboard({ setActive, activeOrder }) {
     <>
       <div className="welcome">
         <div>
-          <p className="eyebrow">Live overview <span className="live-dot" /></p>
-          <h1>Good morning, {farmerName.split(' ')[0]}</h1>
-          <p className="subhead">Here&apos;s what&apos;s happening with your produce today.</p>
+          <p className="eyebrow">{t('roles.farmer_portal')} <span className="live-dot" /></p>
+          <h1>{t('dashboard.welcome_farmer')}, {farmerName.split(' ')[0]}</h1>
+          <p className="subhead">{t('dashboard.farmer_subhead')}</p>
         </div>
-        <button className="primary-button" onClick={() => setActive('Add Produce')}><Plus /> Add produce</button>
+        <button className="primary-button" onClick={() => setActive('Add Produce')}><Plus /> {t('dashboard.list_produce_btn')}</button>
       </div>
 
       <div className="metrics">
-        <Metric label="Available produce" value={metrics.availableProduce} change="Live inventory" icon={Wheat} tone="green" />
-        <Metric label="Active orders" value={metrics.activeOrders} change="In progress" icon={ShoppingBag} tone="blue" />
-        <Metric label="Expected earnings" value={metrics.expectedEarnings} change="Total active" icon={ArrowUpRight} tone="amber" />
-        <Metric label="Active shipments" value={metrics.activeShipments} change="Live on route" icon={Truck} tone="violet" />
+        <Metric label={t('dashboard.available_produce')} value={metrics.availableProduce} change="Live inventory" icon={Wheat} tone="green" />
+        <Metric label={t('dashboard.active_orders')} value={metrics.activeOrders} change="In progress" icon={ShoppingBag} tone="blue" />
+        <Metric label={t('dashboard.expected_earnings')} value={metrics.expectedEarnings} change="Total active" icon={ArrowUpRight} tone="amber" />
+        <Metric label={t('dashboard.active_shipments')} value={metrics.activeShipments} change="Live on route" icon={Truck} tone="violet" />
       </div>
 
       <div className="dashboard-grid">
@@ -891,7 +930,7 @@ function AddProducePage({ setActive }) {
   const standardCropList = [
     'Onion', 'Potato', 'Tomato', 'Wheat', 'Basmati Rice', 'Mustard',
     'Cotton', 'Soybean', 'Maize', 'Garlic', 'Ginger', 'Green Chilli',
-    'Red Chilli', 'Moong Dal', 'Tur Dal', 'Sugarcane', 'Turmeric',
+    'Red Chilli', 'Moong Dal', 'Tur Dal', 'Sugarcane', 'Turmeric', 'Jackfruit',
     'Groundnut', 'Barley', 'Cabbage', 'Cauliflower', 'Brinjal', 'Capsicum',
     'Mango', 'Banana', 'Apple', 'Grapes'
   ]
@@ -1080,7 +1119,7 @@ function AddProducePage({ setActive }) {
                     <option value="Cotton" /><option value="Soybean" /><option value="Maize" />
                     <option value="Garlic" /><option value="Ginger" /><option value="Green Chilli" />
                     <option value="Red Chilli" /><option value="Pulses (Gram / Chana)" />
-                    <option value="Moong Dal" /><option value="Tur Dal" /><option value="Sugarcane" />
+                    <option value="Moong Dal" /><option value="Tur Dal" /><option value="Sugarcane" /><option value="Jackfruit" />
                     <option value="Turmeric" /><option value="Groundnut" /><option value="Barley" />
                     <option value="Millet (Bajra)" /><option value="Cabbage" /><option value="Cauliflower" />
                     <option value="Brinjal" /><option value="Capsicum" /><option value="Mango" />
@@ -1614,6 +1653,7 @@ function AddProducePage({ setActive }) {
 
 /* ─── Buyer Dashboard ─────────────────────────────────────────────────────── */
 function BuyerDashboard({ setActive }) {
+  const { t, i18n } = useTranslation()
   const [metrics, setMetrics] = useState({
     activeOrders: '08',
     pendingOrders: '03',
@@ -1635,10 +1675,10 @@ function BuyerDashboard({ setActive }) {
     }).catch(() => {
       setProducts(mockProduce)
     })
-    buyerService.getSmartMatches({ crop: 'Onion', quantity: 1000, grade: 'Grade A' }).then(matches => {
+    buyerService.getSmartMatches({ crop: 'Onion', quantity: 1000, grade: 'Grade A', language: i18n.language }).then(matches => {
       if (matches && matches.length > 0) setSmartMatches(matches)
     })
-    aiService.getPriceForecast('Onion').then(res => {
+    aiService.getPriceForecast('Onion', i18n.language).then(res => {
       if (res) {
         setPriceData(res)
         if (res.forecasts) {
@@ -1650,7 +1690,7 @@ function BuyerDashboard({ setActive }) {
     aiService.getDemandForecast('Onion').then(res => {
       if (res) setDemandData(res)
     })
-  }, [])
+  }, [i18n.language])
 
   const projected7DayDemand = demandData?.forecasts
     ? Math.round(demandData.forecasts.reduce((a, b) => a + (b.forecast || 0), 0))
@@ -1660,46 +1700,49 @@ function BuyerDashboard({ setActive }) {
     <>
       <div className="welcome">
         <div>
-          <p className="eyebrow">Procurement overview <span className="live-dot" /></p>
-          <h1>Good morning, FreshCart</h1>
-          <p className="subhead">Source verified produce directly from farmers with AI price forecasts.</p>
+          <p className="eyebrow">{t('dashboard.procurement_overview', 'Procurement overview')} <span className="live-dot" /></p>
+          <h1>{t('dashboard.welcome_buyer', 'Good morning, FreshCart')}</h1>
+          <p className="subhead">{t('buyer.procurement_hub', 'Source verified produce directly from farmers with AI price forecasts.')}</p>
         </div>
-        <button className="primary-button" onClick={() => setActive('Find Produce')}><Search /> Find produce</button>
+        <button className="primary-button" onClick={() => setActive('Find Produce')}><Search /> {t('buyer.find_produce', 'Find produce')}</button>
       </div>
 
       <div className="metrics">
-        <Metric label="Active orders" value={metrics.activeOrders} change="Procurement orders" icon={ShoppingBag} tone="blue" />
-        <Metric label="Pending orders" value={metrics.pendingOrders} change="Needs review" icon={FileText} tone="amber" />
-        <Metric label="Incoming shipments" value={metrics.incomingShipments} change="On route" icon={Truck} tone="green" />
-        <Metric label="Total procurement" value={metrics.totalProcurement} change="Total value" icon={ArrowUpRight} tone="violet" />
+        <Metric label={t('dashboard.active_orders', 'Active orders')} value={metrics.activeOrders} change={t('dashboard.procurement_orders', 'Procurement orders')} icon={ShoppingBag} tone="blue" />
+        <Metric label={t('dashboard.pending_orders', 'Pending orders')} value={metrics.pendingOrders} change={t('dashboard.needs_review', 'Needs review')} icon={FileText} tone="amber" />
+        <Metric label={t('dashboard.incoming_shipments', 'Incoming shipments')} value={metrics.incomingShipments} change={t('dashboard.on_route', 'On route')} icon={Truck} tone="green" />
+        <Metric label={t('dashboard.total_procurement', 'Total procurement')} value={metrics.totalProcurement} change={t('dashboard.total_value', 'Total value')} icon={ArrowUpRight} tone="violet" />
       </div>
 
       <div className="buyer-layout">
         <div className="card match-card">
-          <SectionHeader title="Smart matches" action="Find Produce" onAction={() => setActive('Find Produce')} />
+          <SectionHeader title={t('ai.smart_matches', 'Smart matches')} action={t('buyer.find_produce', 'Find Produce')} onAction={() => setActive('Find Produce')} />
           <div className="match-requirement">
-            <span className="ai-label"><Zap /> AI Best Match for Your Order</span>
+            <span className="ai-label"><Zap /> {t('ai.best_match', 'AI Best Match for Your Order')}</span>
             <b>1,000 kg Grade A Onion</b>
-            <p>Ranked by quality grade, price, location, and distance.</p>
+            <p>{t('ai.match_criteria', 'Ranked by quality grade, price, location, and distance.')}</p>
           </div>
           {smartMatches.map((m, i) => (
             <div className="match-row" key={m.farmer + i}>
               <div className="farmer-avatar">{(m.farmer || 'F')[0]}</div>
               <div><b>{m.farmer}</b><span>{m.quantity} · {m.grade}</span></div>
               <small>{m.distance}</small>
-              <Badge tone={m.matchScore >= 90 ? 'green' : 'neutral'}>{m.matchScore}% match</Badge>
+              <Badge tone={m.matchScore >= 90 ? 'green' : 'neutral'}>{m.matchScore}% {t('ai.match', 'match')}</Badge>
             </div>
           ))}
           <button className="primary-button full" onClick={() => setActive('Find Produce')}>
-            Review marketplace produce <ArrowUpRight />
+            {t('buyer.review_marketplace', 'Review marketplace produce')} <ArrowUpRight />
           </button>
         </div>
 
         <div className="card intelligence-card">
-          <SectionHeader title="Market intelligence" action="Open intelligence" onAction={() => setActive('Market Intelligence')} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <SectionHeader title={t('nav.Market Intelligence', 'Market intelligence')} action={t('common.view_details', 'Open intelligence')} onAction={() => setActive('Market Intelligence')} />
+            <TextToSpeechButton text={priceData?.recommendation || `Onion price forecast: ₹${priceData?.projectedPrice || 2780} per quintal in 5 days.`} />
+          </div>
           <div className="intelligence-head">
             <div>
-              <span className="eyebrow">Onion price forecast</span>
+              <span className="eyebrow">{t('price.forecast_title', 'Onion price forecast')}</span>
               <strong>₹{priceData?.projectedPrice?.toLocaleString() || '2,780'} <small>/ qtl in 5 days</small></strong>
               <p className="metric-change">
                 {priceData?.changePct < 0 ? (
@@ -1721,7 +1764,7 @@ function BuyerDashboard({ setActive }) {
         </div>
 
         <div className="card produce-market">
-          <SectionHeader title="Available in marketplace" action="View all" onAction={() => setActive('Find Produce')} />
+          <SectionHeader title={t('buyer.available_marketplace', 'Available in marketplace')} action={t('common.view_all', 'View all')} onAction={() => setActive('Find Produce')} />
           <div className="produce-grid" style={{ padding: '0 22px 22px' }}>
             {products.map(p => (
               <div className="produce-card" key={p.id || p.crop}>
@@ -1740,7 +1783,7 @@ function BuyerDashboard({ setActive }) {
                   <p><MapPin /> {p.location}</p>
                   <p>{p.quantity}</p>
                   <strong>{p.price}</strong>
-                  <button className="outline-button full" onClick={() => setActive('Find Produce')}>View lot</button>
+                  <button className="outline-button full" onClick={() => setActive('Find Produce')}>{t('buyer.view_lot', 'View lot')}</button>
                 </div>
               </div>
             ))}
@@ -1753,6 +1796,7 @@ function BuyerDashboard({ setActive }) {
 
 /* ─── Find Produce Page ───────────────────────────────────────────────────── */
 function FindProducePage({ setActive, setActiveOrder }) {
+  const { t } = useTranslation()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -1834,33 +1878,37 @@ function FindProducePage({ setActive, setActiveOrder }) {
       {toastNode}
       <div className="welcome">
         <div>
-          <p className="eyebrow">Marketplace / Procurement</p>
-          <h1>Find produce</h1>
-          <p className="subhead">Source quality produce directly from verified farmers.</p>
+          <p className="eyebrow">{t('nav.Marketplace', 'Marketplace / Procurement')}</p>
+          <h1>{t('buyer.find_produce', 'Find produce')}</h1>
+          <p className="subhead">{t('buyer.procurement_hub', 'Source quality produce directly from verified farmers.')}</p>
         </div>
       </div>
       <div className="search-row">
-        <div className="search-box">
+        <div className="search-box" style={{ display: 'flex', alignItems: 'center' }}>
           <Search />
           <input
-            placeholder="Search onion, potato, tomato…"
+            placeholder={t('buyer.search_placeholder', 'Search onion, potato, tomato…')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+          <VoiceInputButton
+            onTranscript={(text) => setSearch(text)}
+            placeholder={t('buyer.search_placeholder', 'Search produce…')}
+          />
         </div>
-        <button className="filter-button"><ListFilter /> Filters</button>
+        <button className="filter-button"><ListFilter /> {t('common.filter', 'Filters')}</button>
         <button className="filter-button">Sort: Recommended <ChevronDown /></button>
       </div>
 
       {loading ? (
-        <Spinner label="Loading marketplace produce…" />
+        <Spinner label={t('common.loading', 'Loading marketplace produce…')} />
       ) : (
         <div className="produce-grid large">
           {products.map((p, i) => (
             <div className="produce-card" key={p.id || p.crop + i}>
               <div className="produce-photo">
                 <img src={p.imageUrl || getProduceImage(p.crop)} alt={p.crop} className="produce-img" />
-                <Badge tone="green">Verified lot</Badge>
+                <Badge tone="green">{t('quality.verified_lot', 'Verified lot')}</Badge>
               </div>
               <div className="produce-info">
                 <div className="flex items-start justify-between">
@@ -1875,9 +1923,9 @@ function FindProducePage({ setActive, setActiveOrder }) {
                 <p><CalendarDays /> {p.harvest}</p>
                 <strong>{p.price}</strong>
                 <div className="card-actions">
-                  <button className="outline-button">View lot</button>
+                  <button className="outline-button">{t('buyer.view_lot', 'View lot')}</button>
                   <button className="primary-button" onClick={() => handleOrder(p)}>
-                    Request / order
+                    {t('buyer.place_order', 'Request / order')}
                   </button>
                 </div>
               </div>
@@ -1891,6 +1939,7 @@ function FindProducePage({ setActive, setActiveOrder }) {
 
 /* ─── Market Prices / Intelligence Page ─────────────────────────────────── */
 function MarketPricesPage({ role = 'farmer', setActive }) {
+  const { t } = useTranslation()
   const [activeCategory, setActiveCategory] = useState('All Types')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCrop, setSelectedCrop] = useState('Onion')
@@ -1915,11 +1964,19 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
 
   // Custom Crop Rate API Search Handler
   const handleCustomSearch = async (name) => {
-    const cropName = (name || customSearchInput).trim()
-    if (!cropName) return
+    const rawName = (name || customSearchInput).trim()
+    if (!rawName) return
+
+    // Clean and validate crop name to avoid conversational chatter or multi-sentence text
+    const cleanCrop = rawName.replace(/[^a-zA-Z\s]/g, '').trim()
+    if (!cleanCrop || cleanCrop.length < 2 || cleanCrop.length > 25 || cleanCrop.split(/\s+/).length > 3) {
+      showToast('Please enter or speak a valid fruit or crop name (e.g. Papaya, Kiwi, Almonds).', 'warning')
+      return
+    }
+
     setIsSearchingCustom(true)
     try {
-      const data = await aiService.searchCropRate(cropName, 7)
+      const data = await aiService.searchCropRate(cleanCrop, 7)
       if (data && data.crop) {
         setCustomCropsList(prev => prev.includes(data.crop) ? prev : [...prev, data.crop])
         setSelectedCrop(data.crop)
@@ -1935,7 +1992,7 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
       }
     } catch (err) {
       console.warn('Custom search error:', err)
-      showToast(`Could not fetch rate for ${cropName}`, 'error')
+      showToast(`Could not fetch rate for ${cleanCrop}`, 'error')
     } finally {
       setIsSearchingCustom(false)
     }
@@ -2177,9 +2234,9 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
             e.preventDefault()
             handleCustomSearch(customSearchInput)
           }}
-          style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}
+          style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}
         >
-          <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center' }}>
             <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#16a34a' }} />
             <input
               type="text"
@@ -2188,7 +2245,7 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
               onChange={e => setCustomSearchInput(e.target.value)}
               style={{
                 width: '100%',
-                padding: '10px 14px 10px 38px',
+                padding: '10px 42px 10px 38px',
                 borderRadius: '8px',
                 border: '1.5px solid #86efac',
                 fontSize: '0.9rem',
@@ -2197,6 +2254,13 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
                 color: '#0f172a'
               }}
             />
+            <div style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }}>
+              <VoiceInputButton
+                onTranscript={(text) => {
+                  setCustomSearchInput(text)
+                }}
+              />
+            </div>
           </div>
           <button
             type="submit"
@@ -2569,6 +2633,22 @@ function MarketPricesPage({ role = 'farmer', setActive }) {
                   `Higher mandi arrivals detected for ${selectedCrop}. Recommend listing lots promptly to secure current price levels.`
                 )}
               </p>
+              <div className="chart-note" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                <p style={{ margin: 0 }}>
+                  <Zap /> {priceData?.recommendation || (isRising ? (
+                    `Strong upward price momentum for ${selectedCrop} at ${selectedMandi}. High buyer demand makes this favorable for premium pricing.`
+                  ) : (
+                    `Higher mandi arrivals detected for ${selectedCrop}. Recommend listing lots promptly to secure current price levels.`
+                  ))}
+                </p>
+                <TextToSpeechButton
+                  text={priceData?.recommendation || (isRising ? (
+                    `Strong upward price momentum for ${selectedCrop} at ${selectedMandi}. High buyer demand makes this favorable for premium pricing.`
+                  ) : (
+                    `Higher mandi arrivals detected for ${selectedCrop}. Recommend listing lots promptly to secure current price levels.`
+                  ))}
+                />
+              </div>
             </div>
 
             <div className="card demand-card">
@@ -2684,12 +2764,17 @@ const sampleImages = {
   Banana: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="b1" cx="45%" cy="30%" r="70%"><stop offset="0%" stop-color="%23fef08a"/><stop offset="65%" stop-color="%23eab308"/><stop offset="100%" stop-color="%23854d0e"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><path d="M120 90 Q170 210 280 180 Q190 230 110 105 Z" fill="url(%23b1)"/><ellipse cx="113" cy="98" rx="8" ry="6" fill="%234d7c0f"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Robusta Banana Bunch</text></svg>`,
   Mango: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="m1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="%23fef08a"/><stop offset="45%" stop-color="%23f59e0b"/><stop offset="85%" stop-color="%23ea580c"/><stop offset="100%" stop-color="%23991b1b"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><path d="M185 70 C245 65 265 140 235 195 C205 240 145 220 150 160 C155 110 160 75 185 70 Z" fill="url(%23m1)"/><ellipse cx="180" cy="62" rx="10" ry="18" transform="rotate(-30 180 62)" fill="%2316a34a"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Alphonso Mango</text></svg>`,
   Orange: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="o1" cx="35%" cy="35%" r="65%"><stop offset="0%" stop-color="%23fed7aa"/><stop offset="50%" stop-color="%23f97316"/><stop offset="100%" stop-color="%23c2410c"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><circle cx="200" cy="140" r="82" fill="url(%23o1)"/><circle cx="200" cy="60" r="6" fill="%2315803d"/><ellipse cx="215" cy="55" rx="12" ry="6" transform="rotate(15 215 55)" fill="%2316a34a"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Nagpur Orange</text></svg>`,
+  Sugarcane: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&w=600&q=80',
+  Jackfruit: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="jf1" cx="45%" cy="40%" r="65%"><stop offset="0%" stop-color="%23bef264"/><stop offset="50%" stop-color="%2365a30d"/><stop offset="100%" stop-color="%23365314"/></radialGradient><pattern id="spikes" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="2" fill="%234d7c0f" opacity="0.6"/></pattern></defs><rect width="400" height="280" fill="%230f172a"/><ellipse cx="200" cy="145" rx="80" ry="105" fill="url(%23jf1)"/><ellipse cx="200" cy="145" rx="80" ry="105" fill="url(%23spikes)"/><path d="M200 40 Q195 20 205 10" stroke="%2378350f" stroke-width="8" stroke-linecap="round" fill="none"/><ellipse cx="200" cy="40" rx="14" ry="7" fill="%233f6212"/><text x="200" y="265" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Fresh Jackfruit (Kathal)</text></svg>`,
+  Almonds: 'https://images.unsplash.com/photo-1508061252445-5350f3193a17?auto=format&fit=crop&w=600&q=80',
+  Dates: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80',
   Papaya: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="pa1" cx="40%" cy="40%" r="60%"><stop offset="0%" stop-color="%23fde047"/><stop offset="50%" stop-color="%23f97316"/><stop offset="100%" stop-color="%23c2410c"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><ellipse cx="200" cy="140" rx="65" ry="95" fill="url(%23pa1)"/><ellipse cx="200" cy="50" rx="8" ry="12" fill="%2315803d"/><text x="200" y="260" fill="%23f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade A Ripe Papaya Harvest</text></svg>`,
   Defective: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><defs><radialGradient id="d1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23fdba74"/><stop offset="50%" stop-color="%23c2410c"/><stop offset="100%" stop-color="%23431407"/></radialGradient></defs><rect width="400" height="280" fill="%230f172a"/><circle cx="200" cy="140" r="85" fill="url(%23d1)"/><circle cx="160" cy="125" r="22" fill="%2327272a" opacity="0.85"/><circle cx="230" cy="165" r="16" fill="%2327272a" opacity="0.75"/><text x="200" y="260" fill="%23ef4444" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">Grade C Defective Lot (Rot / Decay)</text></svg>`
 }
 
 /* ─── AI Insights Hub Page ────────────────────────────────────────────────── */
 function AIInsightsPage({ setActive }) {
+  const { t, i18n } = useTranslation()
   const [subTab, setSubTab] = useState('quality') // 'quality' | 'forecasting' | 'matching'
   const [selectedCrop, setSelectedCrop] = useState('Onion')
   const [forecastCategory, setForecastCategory] = useState('All Types')
@@ -2703,16 +2788,23 @@ function AIInsightsPage({ setActive }) {
   const [smartMatches, setSmartMatches] = useState([])
   const [customCropInput, setCustomCropInput] = useState('')
   const [isSearchingRate, setIsSearchingRate] = useState(false)
-  const [customCropsList, setCustomCropsList] = useState(['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon'])
+  const [customCropsList, setCustomCropsList] = useState(['Papaya', 'Guava', 'Pomegranate', 'Dragon Fruit', 'Watermelon', 'Sugarcane', 'Jackfruit'])
   const fileInputRef = useRef(null)
   const { show: showToast, node: toastNode } = useToast()
 
   const handleSearchCustomRate = async (name) => {
-    const cropName = (name || customCropInput).trim()
-    if (!cropName) return
+    const rawName = (name || customCropInput).trim()
+    if (!rawName) return
+
+    const cleanCrop = rawName.replace(/[^a-zA-Z\s]/g, '').trim()
+    if (!cleanCrop || cleanCrop.length < 2 || cleanCrop.length > 25 || cleanCrop.split(/\s+/).length > 3) {
+      showToast('Please enter or speak a valid fruit or crop name (e.g. Papaya, Kiwi, Almonds).', 'warning')
+      return
+    }
+
     setIsSearchingRate(true)
     try {
-      const data = await aiService.searchCropRate(cropName, 7)
+      const data = await aiService.searchCropRate(cleanCrop, 7, i18n.language)
       if (data && data.crop) {
         setCustomCropsList(prev => prev.includes(data.crop) ? prev : [...prev, data.crop])
         setSelectedCrop(data.crop)
@@ -2722,26 +2814,28 @@ function AIInsightsPage({ setActive }) {
         setCustomCropInput('')
       }
     } catch (err) {
-      showToast(`Could not fetch rate for ${cropName}`, 'error')
+      showToast(`Could not fetch rate for ${cleanCrop}`, 'error')
     } finally {
       setIsSearchingRate(false)
     }
   }
 
   useEffect(() => {
-    // Initial fetch of quality baseline
-    aiService.assessQuality(null, selectedCrop).then(res => {
-      if (res) {
-        res.imageUrl = res.imageUrl || imagePreview
-        setQualityResult(res)
-      }
-    })
-    aiService.getPriceForecast(selectedCrop).then(res => setPriceForecast(res))
+    // Only fetch baseline quality when user has NOT uploaded their own photo
+    if (!selectedFile) {
+      aiService.assessQuality(null, selectedCrop, i18n.language).then(res => {
+        if (res) {
+          res.imageUrl = res.imageUrl || imagePreview
+          setQualityResult(res)
+        }
+      })
+    }
+    aiService.getPriceForecast(selectedCrop, i18n.language).then(res => setPriceForecast(res))
     aiService.getDemandForecast(selectedCrop).then(res => setDemandForecast(res))
-    buyerService.getSmartMatches({ crop: selectedCrop, quantity: 1000, grade: 'Grade A' }).then(matches => {
+    buyerService.getSmartMatches({ crop: selectedCrop, quantity: 1000, grade: 'Grade A', language: i18n.language }).then(matches => {
       if (matches) setSmartMatches(matches)
     })
-  }, [selectedCrop])
+  }, [selectedCrop, i18n.language, selectedFile])
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
@@ -2753,21 +2847,28 @@ function AIInsightsPage({ setActive }) {
     const previewUrl = URL.createObjectURL(file)
     setImagePreview(previewUrl)
 
-    aiService.assessQuality(file).then(res => {
+    // Analyze photo with fresh classification (not biased by prior selected crop)
+    aiService.assessQuality(file, null, i18n.language).then(res => {
       if (res) {
-        if (res.produce_name && res.produce_name !== 'Harvest Produce' && res.produce_name !== 'Produce') {
-          if (cropBaselines[res.produce_name]) {
-            setSelectedCrop(res.produce_name)
+        const detected = res.produce_name && res.produce_name !== 'Harvest Produce' && res.produce_name !== 'Produce'
+          ? res.produce_name
+          : 'Produce'
+        res.produce_name = detected
+        if (detected !== 'Produce') {
+          if (cropBaselines[detected]) {
+            setSelectedCrop(detected)
           } else {
-            setCustomCropsList(prev => Array.from(new Set([...prev, res.produce_name])))
-            setSelectedCrop(res.produce_name)
+            setCustomCropsList(prev => Array.from(new Set([...prev, detected])))
+            setSelectedCrop(detected)
           }
+        } else {
+          setSelectedCrop(detected)
         }
         res.imageUrl = res.imageUrl || previewUrl
         setQualityResult(res)
       }
       setIsAnalyzing(false)
-      showToast(`AI Detected ${res?.produce_name || 'Produce'}: Grade ${res?.grade || 'A'} (${res?.quality_score || 88}/100)`)
+      showToast(`AI Identified ${res?.produce_name || 'Produce'}: Grade ${res?.grade || 'A'} (${res?.quality_score ?? res?.score ?? 88}/100)`)
     }).catch((err) => {
       console.warn(err)
       setIsAnalyzing(false)
@@ -2775,33 +2876,44 @@ function AIInsightsPage({ setActive }) {
     })
   }
 
-  const handleTestSample = (cropName, grade, score, good, damaged, rotten, sampleKey) => {
+  const handleTestSample = async (cropName, defaultGrade, defaultScore, good, damaged, rotten, sampleKey) => {
     setIsAnalyzing(true)
     const imgUrl = sampleImages[sampleKey] || sampleImages.Onion
     setImagePreview(imgUrl)
     setSelectedFile(null)
+    setSelectedCrop(cropName)
 
-    setTimeout(() => {
-      const res = {
-        produce_name: cropName,
-        grade,
-        quality_score: score,
-        score,
-        good_percentage: good,
-        damaged_percentage: damaged,
-        rotten_percentage: rotten,
-        shelf_life_days: grade === 'A' ? 14 : grade === 'B' ? 8 : 2,
-        freshness_score: score,
-        imageUrl: imgUrl,
-        description: grade === 'C'
-          ? `High decay and defect level in ${cropName}: ${rotten}% rot/spoilage, ${damaged}% physical damage. Grade ${grade} - Substandard lot.`
-          : `Visual inspection of ${cropName}: ${good}% healthy produce, ${damaged}% minor surface markings. Grade ${grade}.`,
-        defects: { good_produce: good, damaged, rotten }
+    try {
+      const res = await aiService.assessQuality(imgUrl, cropName, i18n.language)
+      if (res) {
+        res.imageUrl = imgUrl
+        setQualityResult(res)
+        setSelectedCrop(res.produce_name || cropName)
+        setIsAnalyzing(false)
+        showToast(`AI Model Evaluated ${res.produce_name || cropName}: Grade ${res.grade} (${res.quality_score ?? res.score}/100)`)
+        return
       }
-      setQualityResult(res)
-      setIsAnalyzing(false)
-      showToast(`Analyzed ${cropName}: Grade ${grade} (${score}/100)`)
-    }, 500)
+    } catch (err) {
+      console.warn('Sample evaluation via model API failed, using fallback:', err)
+    }
+
+    const fallbackRes = {
+      produce_name: cropName,
+      grade: defaultGrade,
+      quality_score: defaultScore,
+      score: defaultScore,
+      good_percentage: good,
+      damaged_percentage: damaged,
+      rotten_percentage: rotten,
+      shelf_life_days: defaultGrade === 'A' ? 14 : defaultGrade === 'B' ? 8 : 2,
+      freshness_score: defaultScore,
+      imageUrl: imgUrl,
+      description: `Visual inspection of ${cropName}: ${good}% healthy produce, ${damaged}% minor surface markings. Grade ${defaultGrade}.`,
+      defects: { good_produce: good, damaged, rotten }
+    }
+    setQualityResult(fallbackRes)
+    setIsAnalyzing(false)
+    showToast(`Analyzed ${cropName}: Grade ${defaultGrade} (${defaultScore}/100)`)
   }
 
 
@@ -2888,7 +3000,9 @@ function AIInsightsPage({ setActive }) {
 
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 6px' }}>
-                  {selectedFile ? selectedFile.name : 'Crop Harvest Scanner'}
+                  {selectedFile
+                    ? `${selectedFile.name} · ${isAnalyzing ? 'Scanning with AI…' : `Identified: ${qualityResult?.produce_name || 'Produce'}`}`
+                    : 'Crop Harvest Scanner'}
                 </h3>
                 <p className="muted" style={{ fontSize: '13px', margin: '0 0 16px' }}>
                   {selectedFile
@@ -2923,6 +3037,30 @@ function AIInsightsPage({ setActive }) {
                 <div style={{ marginTop: '18px' }}>
                   <span className="eyebrow" style={{ display: 'block', marginBottom: '8px' }}>Or test with quick sample crops:</span>
                   <div className="sample-pills">
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Jackfruit ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Jackfruit', 'A', 92, 91, 6, 3, 'Jackfruit')}
+                    >
+                      🍈 Fresh Jackfruit (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Sugarcane ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Sugarcane', 'A', 91, 90, 7, 3, 'Sugarcane')}
+                    >
+                      🎋 Fresh Sugarcane (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Almonds ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Almonds', 'A', 95, 95, 3, 2, 'Almonds')}
+                    >
+                      🌰 Premium Almonds (Grade A)
+                    </button>
+                    <button
+                      className={`sample-pill ${imagePreview === sampleImages.Dates ? 'active' : ''}`}
+                      onClick={() => handleTestSample('Dates', 'A', 93, 91, 6, 3, 'Dates')}
+                    >
+                      🌴 Fresh Dates (Grade A)
+                    </button>
                     <button
                       className={`sample-pill ${imagePreview === sampleImages.Onion ? 'active' : ''}`}
                       onClick={() => handleTestSample('Onion', 'A', 92, 90, 7, 3, 'Onion')}
@@ -3052,7 +3190,7 @@ function AIInsightsPage({ setActive }) {
                 }}
                 style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: '1', minWidth: '280px', maxWidth: '480px' }}
               >
-                <div style={{ position: 'relative', flex: 1 }}>
+                <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                   <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '15px', color: '#94a3b8' }} />
                   <input
                     type="text"
@@ -3061,7 +3199,7 @@ function AIInsightsPage({ setActive }) {
                     onChange={e => setCustomCropInput(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '8px 12px 8px 32px',
+                      padding: '8px 36px 8px 32px',
                       borderRadius: '8px',
                       border: '1px solid #86efac',
                       fontSize: '0.85rem',
@@ -3069,6 +3207,13 @@ function AIInsightsPage({ setActive }) {
                       background: '#fff'
                     }}
                   />
+                  <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)' }}>
+                    <VoiceInputButton
+                      onTranscript={(text) => {
+                        setCustomCropInput(text)
+                      }}
+                    />
+                  </div>
                 </div>
                 <button
                   type="submit"
@@ -3201,11 +3346,18 @@ function AIInsightsPage({ setActive }) {
             <div className="card" style={{ padding: '20px 22px' }}>
               <div className="card-heading">
                 <div>
-                  <p className="eyebrow">Holding vs Selling Advisor</p>
-                  <h3>AI Market Recommendation</h3>
+                  <p className="eyebrow">{t('ai.holding_vs_selling', 'Holding vs Selling Advisor')}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3>{t('ai.market_recommendation', 'AI Market Recommendation')}</h3>
+                    <TextToSpeechButton
+                      text={priceForecast?.recommendation || ((priceForecast?.changePct ?? 0) >= 0
+                        ? `Chronos-Bolt time series detects rising demand in regional mandis. Expected gain: +${priceForecast?.changePct || 7}% over the next 5 days.`
+                        : `Mandi inflows are accelerating. Recommend listing lots today to avoid anticipated margin compression.`)}
+                    />
+                  </div>
                 </div>
                 <Badge tone={(priceForecast?.changePct ?? 0) >= 0 ? 'green' : 'amber'}>
-                  {(priceForecast?.changePct ?? 0) >= 0 ? 'Hold Produce' : 'Sell Promptly'}
+                  {(priceForecast?.changePct ?? 0) >= 0 ? t('ai.hold_produce', 'Hold Produce') : t('ai.sell_promptly', 'Sell Promptly')}
                 </Badge>
               </div>
               <p className="subhead" style={{ fontSize: '13px', margin: '8px 0 16px' }}>
@@ -4010,6 +4162,7 @@ export default function FarmLinkApp() {
   const [active, setActive] = useState('Dashboard')
   const [activeOrder, setActiveOrder] = useState(null)
   const [orderCount, setOrderCount] = useState(0)
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false)
 
   useEffect(() => {
     orderService.list().then(orders => {
@@ -4052,6 +4205,7 @@ export default function FarmLinkApp() {
             setRole(r)
             setActive('Dashboard')
           }}
+          onOpenAssistant={() => setIsAssistantOpen(true)}
         />
         <main className="content">{content}</main>
         <div className="mobile-nav">
@@ -4071,6 +4225,13 @@ export default function FarmLinkApp() {
           })}
         </div>
       </div>
+
+      {/* Multilingual Voice AI Assistant Modal */}
+      <AIAssistantModal
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        role={role}
+      />
     </div>
   )
 }

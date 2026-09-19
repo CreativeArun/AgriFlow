@@ -12,5 +12,7 @@ class QualityResponse(BaseModel):
     description: str
     quality_score: Optional[float] = None
     defects: Optional[dict] = None
+    confidence: Optional[float] = 0.96
+    shelf_life_days: Optional[int] = 14
 
 

@@ -2,14 +2,17 @@ from app.schemas.aggregation import (
     AggregationRequest,
     AggregationResponse,
 )
+from app.services.language_service import format_opportunity_recommendation
 
 
 def aggregate_insights(
     request: AggregationRequest,
+    language: str = "en",
 ) -> AggregationResponse:
     """
     Combine quality, price, demand, and buyer matching
     scores into an overall agricultural opportunity score.
+    scores into an overall agricultural opportunity score with multilingual recommendation.
     """
 
     overall_score = (
@@ -20,6 +23,7 @@ def aggregate_insights(
     )
 
     overall_score = round(overall_score, 2)
+    recommendation = format_opportunity_recommendation(overall_score, lang=language)
 
     if overall_score >= 80:
         recommendation = "Strong opportunity"

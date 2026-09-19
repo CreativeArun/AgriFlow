@@ -4,6 +4,7 @@ from app.schemas.matching import (
     MatchingRequest,
     MatchingResponse,
 )
+from app.services.language_service import format_match_reason
 
 
 BUYERS = [
@@ -51,37 +52,48 @@ def calculate_match(
 ) -> MatchResult:
     score = 0
     reasons = []
+    reason_keys = []
 
     if request.produce_type.lower() == buyer.produce_type.lower():
         score += 40
         reasons.append("produce type matches")
+        reason_keys.append("produce_matches")
     else:
         reasons.append("produce type does not match")
+        reason_keys.append("produce_differs")
 
     if QUALITY_RANK[request.quality_grade] >= QUALITY_RANK[buyer.minimum_quality_grade]:
         score += 25
         reasons.append("quality requirement is satisfied")
+        reason_keys.append("quality_satisfied")
     else:
         reasons.append("quality requirement is not satisfied")
+        reason_keys.append("quality_not_satisfied")
 
     if request.location.lower() == buyer.location.lower():
         score += 20
         reasons.append("location matches")
+        reason_keys.append("location_matches")
     else:
         reasons.append("location differs")
+        reason_keys.append("location_differs")
 
     if request.quantity >= buyer.required_quantity:
         score += 15
         reasons.append("required quantity is available")
+        reason_keys.append("quantity_available")
     else:
         quantity_ratio = request.quantity / buyer.required_quantity
         score += 15 * quantity_ratio
         reasons.append("available quantity is below requirement")
+        reason_keys.append("quantity_below")
+
+    reason_text = format_match_reason(reason_keys, lang=getattr(request, "language", "en"))
 
     return MatchResult(
         buyer_id=buyer.buyer_id,
         match_score=round(score, 2),
-        reason="; ".join(reasons),
+        reason=reason_text,
     )
 
 
