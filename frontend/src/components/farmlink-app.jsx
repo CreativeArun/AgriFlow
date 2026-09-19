@@ -2854,9 +2854,18 @@ function AIInsightsPage({ setActive }) {
           ? res.produce_name
           : 'Produce'
         res.produce_name = detected
-        res.imageUrl = previewUrl
+        if (detected !== 'Produce') {
+          if (cropBaselines[detected]) {
+            setSelectedCrop(detected)
+          } else {
+            setCustomCropsList(prev => Array.from(new Set([...prev, detected])))
+            setSelectedCrop(detected)
+          }
+        } else {
+          setSelectedCrop(detected)
+        }
+        res.imageUrl = res.imageUrl || previewUrl
         setQualityResult(res)
-        setSelectedCrop(detected)
       }
       setIsAnalyzing(false)
       showToast(`AI Identified ${res?.produce_name || 'Produce'}: Grade ${res?.grade || 'A'} (${res?.quality_score ?? res?.score ?? 88}/100)`)

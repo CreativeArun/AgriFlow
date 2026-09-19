@@ -167,6 +167,7 @@ def _detect_crop_species(
     orange_carrot = 0
     green_grapes = 0
     green_leafy = 0
+    sugarcane_stalk = 0
     purple_onion = 0
     violet_brinjal = 0
     earthy_potato = 0
@@ -176,14 +177,20 @@ def _detect_crop_species(
     dark_dates = 0
     jackfruit_count = 0
     cane_sugarcane = 0
+    white_cotton = 0
+    rice_grain = 0
 
     for r, g, b in pixels:
         brightness = (r + g + b) / 3.0
         if brightness < 20:
             continue
 
+        # White / Fluffy Cotton Fibers
+        if r > 215 and g > 215 and b > 210:
+            white_cotton += 1
+
         # Tan / Nutty Golden Brown: Almonds / Cashew / Walnuts
-        if 100 < r < 240 and 50 < g < 175 and 20 < b < 135 and r > g and (r - b) > 20:
+        elif 100 < r < 240 and 50 < g < 175 and 20 < b < 135 and r > g and (r - b) > 20:
             tan_almond += 1
 
         # Dark Amber / Deep Brown: Dates / Tamarind
@@ -206,15 +213,16 @@ def _detect_crop_species(
                 red_pomegranate += 1
             else:
                 red_crimson_apple += 1
-
-        # Orange: Citrus Orange vs Carrot vs Papaya
         elif r > 180 and 85 < g < 155 and b < 75 and (r - g) > 35:
             if aspect_ratio > 1.35 or aspect_ratio < 0.75:
                 orange_carrot += 1
             else:
                 orange_citrus += 1
-
-        # Yellow: Banana vs Mango vs Pulses vs Wheat
+        elif (g > 80 and r > 70 and b < 90 and g > b * 1.15 and abs(r - g) < 50) or (g > 60 and r > 50 and b < 65 and abs(r - g) < 30):
+            if aspect_ratio > 1.15 or aspect_ratio < 0.85:
+                sugarcane_stalk += 1.6
+            else:
+                sugarcane_stalk += 1.0
         elif r > 160 and g > 135 and b < 120:
             if aspect_ratio > 1.4 or aspect_ratio < 0.7:
                 yellow_banana += 1
@@ -225,8 +233,8 @@ def _detect_crop_species(
             else:
                 golden_wheat += 1
                 granular_pulse += 1
-
-        # Green: Grapes vs Chilli/Vegetables
+        elif r > 180 and g > 175 and b > 150 and abs(r - g) < 25 and (r - b) < 45:
+            rice_grain += 1
         elif g > 95 and g > r * 1.15 and g > b * 1.15:
             if r > 65 and b > 45 and brightness > 100:
                 green_grapes += 1
@@ -246,7 +254,7 @@ def _detect_crop_species(
 
     counts = {
         "Jackfruit": jackfruit_count,
-        "Sugarcane": cane_sugarcane,
+        "Sugarcane": max(cane_sugarcane, int(sugarcane_stalk)),
         "Almonds": tan_almond,
         "Dates": dark_dates,
         "Pomegranate": red_pomegranate,
@@ -263,6 +271,8 @@ def _detect_crop_species(
         "Potato": earthy_potato,
         "Wheat": int(golden_wheat * 0.4),
         "Pulses (Dal/Gram)": int(granular_pulse * 0.6),
+        "Basmati Rice": int(rice_grain * 0.6),
+        "Cotton": int(white_cotton * 0.5),
     }
 
     best_crop = max(counts, key=counts.get)
@@ -413,6 +423,15 @@ def _local_vision_analysis(
             "Green Chilli": 10,
             "Carrot": 14,
             "Brinjal": 6,
+            "Sugarcane": 20,
+            "Cotton": 180,
+            "Basmati Rice": 180,
+            "Maize": 90,
+            "Garlic": 60,
+            "Ginger": 45,
+            "Papaya": 8,
+            "Watermelon": 14,
+            "Guava": 7,
         }
         base_shelf = fruit_shelf_lives.get(crop_name, 14)
         shelf_factor = 1.0 if grade == "A" else 0.55 if grade == "B" else 0.25
