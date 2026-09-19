@@ -22,6 +22,10 @@ class MatchingRequest(BaseModel):
         min_length=1,
         description="Farmer or produce location.",
     )
+    language: str = Field(
+        default="en",
+        description="Language code for match reasoning.",
+    )
 
 
 class Buyer(BaseModel):

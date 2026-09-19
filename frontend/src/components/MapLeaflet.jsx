@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { logisticsService, trackingService } from '../lib/api/services.js';
-import { MapPin, Radio } from 'lucide-react';
+import {
+  MapPin, Radio, Layers, Maximize2, Minimize2, Compass,
+  Thermometer, Droplets, Gauge, Fuel, ShieldCheck, Eye,
+  Truck, Warehouse, Building2, Navigation, AlertTriangle,
+  CheckCircle2, PhoneCall
+} from 'lucide-react';
 
 const STATE_CENTROIDS = {
   'punjab': [30.9010, 75.8573],          // Central Punjab (Ludhiana)
@@ -464,6 +469,63 @@ function generateCurvedRoutePoints(start, end, numPoints = 16) {
   return points;
 }
 
+function calculateBearing(p1, p2) {
+  if (!p1 || !p2) return 0;
+  const lat1 = (p1[0] * Math.PI) / 180;
+  const lat2 = (p2[0] * Math.PI) / 180;
+  const dLon = ((p2[1] - p1[1]) * Math.PI) / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  const brng = (Math.atan2(y, x) * 180) / Math.PI;
+  return Math.round((brng + 360) % 360);
+}
+
+const REGIONAL_MANDIS = [
+  { name: 'Azadpur APMC Mandi', coords: [28.7159, 77.1706], type: 'National Terminal', volume: '14,200 MT/day', rate: '₹2,650/qtl', state: 'Delhi' },
+  { name: 'Ghazipur APMC Terminal', coords: [28.6256, 77.3292], type: 'Fruit & Veg Terminal', volume: '8,400 MT/day', rate: '₹2,580/qtl', state: 'Delhi/UP' },
+  { name: 'Okhla Mandi', coords: [28.5434, 77.2848], type: 'South NCR APMC', volume: '5,100 MT/day', rate: '₹2,620/qtl', state: 'Delhi' },
+  { name: 'Panipat APMC Mandi', coords: [29.3909, 76.9635], type: 'Haryana State APMC', volume: '3,800 MT/day', rate: '₹2,490/qtl', state: 'Haryana' },
+  { name: 'Karnal Grain Mandi', coords: [29.6857, 76.9905], type: 'Basmati & Grain Hub', volume: '6,200 MT/day', rate: '₹3,450/qtl', state: 'Haryana' },
+  { name: 'Ludhiana Apex Mandi', coords: [30.9010, 75.8573], type: 'Punjab Apex Mandi', volume: '9,500 MT/day', rate: '₹2,380/qtl', state: 'Punjab' },
+  { name: 'Agra Mandi Hub', coords: [27.1767, 78.0081], type: 'Potato & Veg Hub', volume: '7,100 MT/day', rate: '₹1,850/qtl', state: 'Uttar Pradesh' },
+  { name: 'Muhana Mandi Jaipur', coords: [26.8200, 75.7600], type: 'Rajasthan APMC Terminal', volume: '8,000 MT/day', rate: '₹2,550/qtl', state: 'Rajasthan' }
+];
+
+const COLD_STORAGE_HUBS = [
+  { name: 'AgriFlow Multi-Commodity Vault', coords: [29.1500, 77.0500], capacity: '4,500 MT (74% full)', temp: '3.2°C', status: 'Certified APMC' },
+  { name: 'Kisan Fresh Cold Logistics', coords: [28.8500, 77.1200], capacity: '3,200 MT (62% full)', temp: '4.0°C', status: 'Reefer Compatible' },
+  { name: 'Sonipat Agri Cold Chain Node', coords: [28.9800, 77.0300], capacity: '6,000 MT (85% full)', temp: '2.8°C', status: 'Fastag Enabled' },
+  { name: 'NCR Perishable Transit Vault', coords: [28.6500, 77.2200], capacity: '8,000 MT (90% full)', temp: '3.5°C', status: '24/7 Gate In' }
+];
+
+const TILE_CONFIG = {
+  streets: {
+    name: 'Street',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    subdomains: 'abcd',
+    attribution: '&copy; CartoDB &copy; OpenStreetMap'
+  },
+  satellite: {
+    name: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    subdomains: 'abcd',
+    labelsUrl: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; ESRI World Imagery &copy; OpenStreetMap'
+  },
+  terrain: {
+    name: 'Terrain',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    subdomains: 'abc',
+    attribution: '&copy; OpenTopoMap &copy; OpenStreetMap'
+  },
+  dark: {
+    name: 'Night',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    subdomains: 'abcd',
+    attribution: '&copy; CartoDB Dark Matter'
+  }
+};
+
 export default function MapLeaflet({
   shipmentId = 'SHP-001',
   pickupLocation = 'Panipat, Haryana',
@@ -472,41 +534,146 @@ export default function MapLeaflet({
   quantity = '500 kg',
   onDeviationDetected
 }) {
+  const containerRef = useRef(null);
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const labelLayerRef = useRef(null);
+
   const farmMarkerRef = useRef(null);
   const centreMarkerRef = useRef(null);
+  const weighbridgeMarkerRef = useRef(null);
   const buyerMarkerRef = useRef(null);
   const vehicleMarkerRef = useRef(null);
+  const geofenceCircleRef = useRef(null);
   const routePolylineRef = useRef(null);
   const recalculatedPolylineRef = useRef(null);
+  const mandiLayerGroupRef = useRef(null);
+  const coldLayerGroupRef = useRef(null);
   const animFrameRef = useRef(null);
 
-  const [routeStats, setRouteStats] = useState({ distance: '64 km', eta: '1h 45m', speed: '42 km/h' });
+  const [activeBaseLayer, setActiveBaseLayer] = useState('satellite'); // 'streets' | 'satellite' | 'terrain' | 'dark'
+  const [showMandis, setShowMandis] = useState(true);
+  const [showColdStorage, setShowColdStorage] = useState(true);
+  const [showGeofence, setShowGeofence] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [routeStats, setRouteStats] = useState({ distance: '64 km', eta: '1h 45m', speed: '46 km/h' });
   const [isDeviated, setIsDeviated] = useState(false);
   const [status, setStatus] = useState('In transit (On route)');
   const [progressPct, setProgressPct] = useState(45);
+  const [telematics, setTelematics] = useState({
+    temp: 3.8,
+    humidity: 86,
+    speed: 46,
+    fuel: 78,
+    bearing: 165,
+    battery: 98,
+    geofenceStatus: 'Approaching 12km Zone'
+  });
 
-  const createCustomIcon = (color, label) => {
+  const createCustomIcon = (color, label, subtext = '') => {
     return L.divIcon({
       className: 'custom-leaflet-marker',
-      html: `<div style="
-background-color: ${color};
-width: 32px;
-height: 32px;
-border-radius: 50%;
-border: 2px solid white;
-box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-display: flex;
-align-items: center;
-justify-content: center;
-color: white;
-font-weight: bold;
-font-size: 14px;
-">${label}</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      html: `
+        <div style="display: flex; flex-direction: column; align-items: center;">
+          <div style="
+            background: ${color};
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2.5px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+          ">${label}</div>
+          ${subtext ? `<span style="
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-top: 2px;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          ">${subtext}</span>` : ''}
+        </div>
+      `,
+      iconSize: [36, subtext ? 52 : 36],
+      iconAnchor: [18, 18]
     });
+  };
+
+  const createVehicleIcon = (bearing = 0) => {
+    return L.divIcon({
+      className: 'vehicle-leaflet-marker',
+      html: `
+        <div class="vehicle-marker-inner" style="transform: rotate(${bearing}deg); width: 44px; height: 44px;">
+          <div style="
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            position: relative;
+          ">
+            🚚
+            <div style="
+              position: absolute;
+              top: -3px;
+              width: 9px;
+              height: 9px;
+              background: #4ade80;
+              border-radius: 50%;
+              box-shadow: 0 0 10px #4ade80;
+            "></div>
+          </div>
+        </div>
+      `,
+      iconSize: [44, 44],
+      iconAnchor: [22, 22]
+    });
+  };
+
+  // Helper to switch base tile layers
+  const setBaseTileLayer = (layerKey) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = null;
+    }
+    if (labelLayerRef.current) {
+      map.removeLayer(labelLayerRef.current);
+      labelLayerRef.current = null;
+    }
+
+    const cfg = TILE_CONFIG[layerKey] || TILE_CONFIG.streets;
+    tileLayerRef.current = L.tileLayer(cfg.url, {
+      subdomains: cfg.subdomains || 'abc',
+      attribution: cfg.attribution,
+      maxZoom: 19
+    }).addTo(map);
+
+    if (cfg.labelsUrl) {
+      labelLayerRef.current = L.tileLayer(cfg.labelsUrl, {
+        subdomains: cfg.subdomains || 'abc',
+        maxZoom: 19
+      }).addTo(map);
+    }
+
+    setActiveBaseLayer(layerKey);
   };
 
   // 1. Initialize Map once
@@ -519,77 +686,232 @@ font-size: 14px;
     const center = [(origin[0] + dest[0]) / 2, (origin[1] + dest[1]) / 2];
 
     const map = L.map(mapRef.current, {
-      zoomControl: true,
+      zoomControl: false,
       scrollWheelZoom: true
-    }).setView(center, 8);
+    }).setView(center, 9);
 
     mapInstanceRef.current = map;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
+    // Zoom control at bottom right
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Initial markers
-    farmMarkerRef.current = L.marker(origin, { icon: createCustomIcon('#2e7d32', '🌾') })
+    // Initial base layer (Satellite default)
+    setBaseTileLayer('satellite');
+
+    // Layer groups for toggleable overlays
+    mandiLayerGroupRef.current = L.layerGroup().addTo(map);
+    coldLayerGroupRef.current = L.layerGroup().addTo(map);
+
+    // Origin Farm Marker
+    farmMarkerRef.current = L.marker(origin, { icon: createCustomIcon('#16a34a', '🌾', 'Origin Farm') })
       .addTo(map)
-      .bindPopup(`<b>Origin (Farm)</b><br/>${pickupLocation}`);
+      .bindPopup(`
+        <div style="padding: 14px; font-family: sans-serif; min-width: 220px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="background: #dcfce7; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #166534; font-size: 11px;">ORIGIN FARM</span>
+            <span style="font-size: 11px; color: #16a34a; font-weight: 600;">✓ Verified Lot</span>
+          </div>
+          <b style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 4px;">${pickupLocation}</b>
+          <p style="margin: 0 0 8px; font-size: 12px; color: #475569;">Carrying: <b>${crop}</b> (${quantity})</p>
+          <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #334155; border: 1px solid #e2e8f0;">
+            📦 Inspected &amp; Dispatched via Reefer Truck
+          </div>
+        </div>
+      `);
 
+    // AGMARK Inspection Hub Marker
     const mid = [(origin[0] + dest[0]) / 2 + 0.02, (origin[1] + dest[1]) / 2 - 0.01];
-    centreMarkerRef.current = L.marker(mid, { icon: createCustomIcon('#d97706', '📦') })
+    centreMarkerRef.current = L.marker(mid, { icon: createCustomIcon('#0284c7', '🛡️', 'AGMARK Hub') })
       .addTo(map)
-      .bindPopup('<b>AgriFlow Transit Hub</b><br/>Quality Checked &amp; Dispatched');
+      .bindPopup(`
+        <div style="padding: 14px; font-family: sans-serif; min-width: 220px;">
+          <span style="background: #e0f2fe; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #0369a1; font-size: 11px;">AGMARK INSPECTION HUB</span>
+          <b style="font-size: 13px; color: #0f172a; display: block; margin: 6px 0 4px;">AgriFlow Regional Transit Node</b>
+          <p style="margin: 0 0 6px; font-size: 12px; color: #475569;">Grade A Certified · Moisture 11.4%</p>
+          <div style="color: #0284c7; font-size: 11px; font-weight: 600;">✓ Cold-Chain Reefer Seal Intact</div>
+        </div>
+      `);
 
-    buyerMarkerRef.current = L.marker(dest, { icon: createCustomIcon('#2563eb', '🏬') })
+    // Highway Weighbridge Checkpoint
+    const weighPos = [origin[0] * 0.75 + dest[0] * 0.25, origin[1] * 0.75 + dest[1] * 0.25];
+    weighbridgeMarkerRef.current = L.marker(weighPos, { icon: createCustomIcon('#d97706', '⚖️', 'Weighbridge') })
       .addTo(map)
-      .bindPopup(`<b>Buyer Destination</b><br/>${deliveryLocation}`);
+      .bindPopup(`
+        <div style="padding: 14px; font-family: sans-serif; min-width: 220px;">
+          <span style="background: #fef3c7; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #92400e; font-size: 11px;">HIGHWAY WEIGHBRIDGE</span>
+          <b style="font-size: 13px; color: #0f172a; display: block; margin: 6px 0 4px;">NH-44 Automated Weigh Station</b>
+          <p style="margin: 0 0 4px; font-size: 12px; color: #475569;">Gross: 3,450 kg · Tare: 2,950 kg</p>
+          <div style="color: #16a34a; font-size: 11px; font-weight: 600;">✓ Electronic E-Way Bill Cleared</div>
+        </div>
+      `);
 
-    const initialPoints = generateCurvedRoutePoints(origin, dest, 16);
-    routePolylineRef.current = L.polyline(initialPoints, {
-      color: '#16a34a',
-      weight: 5,
-      dashArray: '8, 10',
-      opacity: 0.85
+    // Buyer Mandi Destination Marker
+    buyerMarkerRef.current = L.marker(dest, { icon: createCustomIcon('#2563eb', '🏬', 'Destination Mandi') })
+      .addTo(map)
+      .bindPopup(`
+        <div style="padding: 14px; font-family: sans-serif; min-width: 220px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="background: #dbeafe; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #1e40af; font-size: 11px;">BUYER MANDI TERMINAL</span>
+            <span style="font-size: 11px; color: #2563eb; font-weight: 600;">Gate-In Platform</span>
+          </div>
+          <b style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 4px;">${deliveryLocation}</b>
+          <p style="margin: 0 0 6px; font-size: 12px; color: #475569;">Receiving Lot: <b>${crop}</b> (${quantity})</p>
+          <div style="background: #eff6ff; padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #1d4ed8; font-weight: 600;">
+            📍 Unloading Dock #3 Assigned
+          </div>
+        </div>
+      `);
+
+    // Geofence Delivery Ring (12km radius around destination)
+    geofenceCircleRef.current = L.circle(dest, {
+      radius: 12000,
+      color: '#3b82f6',
+      weight: 2,
+      fillColor: '#60a5fa',
+      fillOpacity: 0.12,
+      dashArray: '6, 8'
     }).addTo(map);
 
-    // Vehicle marker
-    const vehicleIcon = L.divIcon({
-      className: 'vehicle-leaflet-marker',
-      html: `<div style="
-background-color: #15803d;
-width: 38px;
-height: 38px;
-border-radius: 50%;
-border: 3px solid white;
-box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-display: flex;
-align-items: center;
-justify-content: center;
-color: white;
-font-size: 17px;
-">🚚</div>`,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19]
+    const initialPoints = generateCurvedRoutePoints(origin, dest, 24);
+    routePolylineRef.current = L.polyline(initialPoints, {
+      color: '#22c55e',
+      weight: 6,
+      opacity: 0.9,
+      className: 'leaflet-route-flow',
+      dashArray: '10, 14'
+    }).addTo(map);
+
+    // Initial vehicle marker
+    const startPos = initialPoints[Math.floor(initialPoints.length * 0.45)];
+    vehicleMarkerRef.current = L.marker(startPos, { icon: createVehicleIcon(165) })
+      .addTo(map)
+      .bindPopup(`
+        <div style="padding: 14px; font-family: sans-serif; min-width: 230px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="background: #16a34a; color: white; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">COLD-CHAIN REEFER</span>
+            <span style="font-size: 11px; color: #16a34a; font-weight: 700;">● Live GPS</span>
+          </div>
+          <b style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 2px;">Tata 407 (HR 38 AB 2041)</b>
+          <p style="margin: 0 0 6px; font-size: 12px; color: #475569;">Consignment: <b>${crop}</b> (${quantity})</p>
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+            <span>Reefer: <b style="color: #0284c7;">3.8°C</b></span>
+            <span>Speed: <b style="color: #16a34a;">46 km/h</b></span>
+            <span>Humidity: <b style="color: #0f172a;">86%</b></span>
+            <span>Fuel: <b style="color: #d97706;">78%</b></span>
+          </div>
+        </div>
+      `);
+
+    // Populate Regional Mandis Overlay
+    REGIONAL_MANDIS.forEach(m => {
+      const mandiMarker = L.marker(m.coords, {
+        icon: L.divIcon({
+          className: 'mandi-pin',
+          html: `<div style="
+            background: #ffffff;
+            border: 2px solid #2563eb;
+            color: #1e40af;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">🏬 ${m.name.split(' ')[0]}</div>`,
+          iconAnchor: [30, 15]
+        })
+      }).bindPopup(`
+        <div style="padding: 12px; font-family: sans-serif; min-width: 200px;">
+          <span style="background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">APMC MANDI</span>
+          <b style="display: block; font-size: 13px; margin: 4px 0 2px;">${m.name}</b>
+          <div style="font-size: 11px; color: #64748b;">Daily Volume: <b>${m.volume}</b></div>
+          <div style="font-size: 11px; color: #16a34a; font-weight: 600; margin-top: 4px;">Benchmark: ${m.rate}</div>
+        </div>
+      `);
+      mandiLayerGroupRef.current.addLayer(mandiMarker);
     });
 
-    vehicleMarkerRef.current = L.marker(initialPoints[Math.floor(initialPoints.length * 0.45)], { icon: vehicleIcon })
-      .addTo(map)
-      .bindPopup(`<b>Active Vehicle</b><br/>Carrying: ${crop} (${quantity})<br/>Route: ${pickupLocation} → ${deliveryLocation}`);
+    // Populate Cold Storage Hubs Overlay
+    COLD_STORAGE_HUBS.forEach(c => {
+      const coldMarker = L.marker(c.coords, {
+        icon: L.divIcon({
+          className: 'cold-storage-pin',
+          html: `<div style="
+            background: #0284c7;
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">❄️ ${c.name.split(' ')[0]} (${c.temp})</div>`,
+          iconAnchor: [35, 15]
+        })
+      }).bindPopup(`
+        <div style="padding: 12px; font-family: sans-serif; min-width: 200px;">
+          <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">COLD STORAGE VAULT</span>
+          <b style="display: block; font-size: 13px; margin: 4px 0 2px;">${c.name}</b>
+          <div style="font-size: 11px; color: #64748b;">Capacity: <b>${c.capacity}</b></div>
+          <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 4px;">Temperature: ${c.temp} · ${c.status}</div>
+        </div>
+      `);
+      coldLayerGroupRef.current.addLayer(coldMarker);
+    });
 
     setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
-        mapInstanceRef.current.fitBounds([origin, dest], { padding: [60, 60], maxZoom: 12 });
+        mapInstanceRef.current.fitBounds([origin, dest], { padding: [70, 70], maxZoom: 12 });
       }
-    }, 200);
+    }, 250);
+
+    // Listen for fullscreen change
+    const onFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+      setTimeout(() => {
+        if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
+      }, 100);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
 
     return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
       if (animFrameRef.current) clearTimeout(animFrameRef.current);
       map.remove();
       mapInstanceRef.current = null;
     };
   }, []);
 
-  // 2. Dynamically re-calculate route with live Nominatim geocoding & OSRM routing
+  // 2. Toggle Overlays dynamically
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (mandiLayerGroupRef.current) {
+      if (showMandis) map.addLayer(mandiLayerGroupRef.current);
+      else map.removeLayer(mandiLayerGroupRef.current);
+    }
+
+    if (coldLayerGroupRef.current) {
+      if (showColdStorage) map.addLayer(coldLayerGroupRef.current);
+      else map.removeLayer(coldLayerGroupRef.current);
+    }
+
+    if (geofenceCircleRef.current) {
+      if (showGeofence) map.addLayer(geofenceCircleRef.current);
+      else map.removeLayer(geofenceCircleRef.current);
+    }
+  }, [showMandis, showColdStorage, showGeofence]);
+
+  // 3. Dynamically re-calculate route with live Nominatim geocoding & OSRM routing
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -597,104 +919,116 @@ font-size: 17px;
     let isMounted = true;
 
     const updateLocationsAndRoute = async () => {
-      // Step 1: Live Geocode both locations concurrently
-      const [resolvedOrigin, resolvedDest] = await Promise.all([
-        fetchGeocodeCoordinates(pickupLocation, 'origin'),
-        fetchGeocodeCoordinates(deliveryLocation, 'dest')
-      ]);
-
-      if (!isMounted || !mapInstanceRef.current) return;
-
-      const { origin, dest } = adjustCollocatedCoordinates(resolvedOrigin, resolvedDest);
-
-      const distKm = Math.max(12, calculateDistanceKm(origin, dest));
-      const hours = Math.floor(distKm / 45);
-      const mins = Math.round(((distKm % 45) / 45) * 60);
-      const etaStr = hours > 0 ? `${hours}h ${mins}m` : `${mins || 30}m`;
-      setRouteStats({
-        distance: `${distKm} km`,
-        eta: etaStr,
-        speed: `${Math.floor(40 + (distKm % 15))} km/h`
-      });
-
-      const midLat = (origin[0] + dest[0]) / 2 + 0.02;
-      const midLng = (origin[1] + dest[1]) / 2 - 0.01;
-      const centre = [midLat, midLng];
-
-      if (farmMarkerRef.current) {
-        farmMarkerRef.current.setLatLng(origin);
-        farmMarkerRef.current.setPopupContent(`<b>Origin (Farm)</b><br/>${pickupLocation}`);
-      }
-      if (centreMarkerRef.current) {
-        centreMarkerRef.current.setLatLng(centre);
-        centreMarkerRef.current.setPopupContent(`<b>AgriFlow Transit Hub</b><br/>Inspection &amp; Dispatch Hub`);
-      }
-      if (buyerMarkerRef.current) {
-        buyerMarkerRef.current.setLatLng(dest);
-        buyerMarkerRef.current.setPopupContent(`<b>Buyer Destination</b><br/>${deliveryLocation}`);
-      }
-
-      let activeWaypoints = generateCurvedRoutePoints(origin, dest, 20);
-
-      if (routePolylineRef.current) {
-        routePolylineRef.current.setLatLngs(activeWaypoints);
-      }
-
-      // Attempt OSRM real highway routing
       try {
-        const coords = `${origin[1]},${origin[0]};${centre[1]},${centre[0]};${dest[1]},${dest[0]}`;
-        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          if (data.routes && data.routes[0] && data.routes[0].geometry?.coordinates?.length > 0) {
-            const roadPoints = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-            activeWaypoints = roadPoints;
-            if (routePolylineRef.current) {
-              routePolylineRef.current.setLatLngs(roadPoints);
+        // Step 1: Live Geocode both locations concurrently
+        const [resolvedOrigin, resolvedDest] = await Promise.all([
+          fetchGeocodeCoordinates(pickupLocation, 'origin'),
+          fetchGeocodeCoordinates(deliveryLocation, 'dest')
+        ]);
+
+        if (!isMounted || !mapInstanceRef.current) return;
+
+        const { origin, dest } = adjustCollocatedCoordinates(resolvedOrigin, resolvedDest);
+
+        const distKm = Math.max(12, calculateDistanceKm(origin, dest));
+        const hours = Math.floor(distKm / 46);
+        const mins = Math.round(((distKm % 46) / 46) * 60);
+        const etaStr = hours > 0 ? `${hours}h ${mins}m` : `${mins || 28}m`;
+        setRouteStats({
+          distance: `${distKm} km`,
+          eta: etaStr,
+          speed: '46 km/h'
+        });
+
+        const midLat = (origin[0] + dest[0]) / 2 + 0.02;
+        const midLng = (origin[1] + dest[1]) / 2 - 0.01;
+        const centre = [midLat, midLng];
+        const weighPos = [origin[0] * 0.75 + dest[0] * 0.25, origin[1] * 0.75 + dest[1] * 0.25];
+
+        if (farmMarkerRef.current) farmMarkerRef.current.setLatLng(origin);
+        if (centreMarkerRef.current) centreMarkerRef.current.setLatLng(centre);
+        if (weighbridgeMarkerRef.current) weighbridgeMarkerRef.current.setLatLng(weighPos);
+        if (buyerMarkerRef.current) buyerMarkerRef.current.setLatLng(dest);
+        if (geofenceCircleRef.current) geofenceCircleRef.current.setLatLng(dest);
+
+        let activeWaypoints = generateCurvedRoutePoints(origin, dest, 24);
+
+        if (routePolylineRef.current) {
+          routePolylineRef.current.setLatLngs(activeWaypoints);
+        }
+
+        // Attempt OSRM real highway routing
+        try {
+          const coords = `${origin[1]},${origin[0]};${centre[1]},${centre[0]};${dest[1]},${dest[0]}`;
+          const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+          if (res.ok && isMounted) {
+            const data = await res.json();
+            if (data.routes && data.routes[0] && data.routes[0].geometry?.coordinates?.length > 0) {
+              const roadPoints = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+              activeWaypoints = roadPoints;
+              if (routePolylineRef.current) {
+                routePolylineRef.current.setLatLngs(roadPoints);
+              }
             }
           }
+        } catch (err) {
+          // Fallback already in place with activeWaypoints
         }
+
+        // Adjust map view to fit route bounds
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.invalidateSize();
+            mapInstanceRef.current.fitBounds([origin, dest], { padding: [70, 70], maxZoom: 12 });
+          }
+        }, 200);
+
+        // Vehicle movement & rotation simulation
+        let step = 0;
+        const totalSteps = 450;
+        const animateVehicle = () => {
+          if (!isMounted || !mapInstanceRef.current || !vehicleMarkerRef.current) return;
+
+          step = (step + 1) % totalSteps;
+          const progress = step / totalSteps;
+          const indexFloat = progress * (activeWaypoints.length - 1);
+          const baseIndex = Math.floor(indexFloat);
+          const nextIndex = Math.min(baseIndex + 1, activeWaypoints.length - 1);
+          const subT = indexFloat - baseIndex;
+
+          const p1 = activeWaypoints[baseIndex];
+          const p2 = activeWaypoints[nextIndex];
+          if (p1 && p2) {
+            const currentPos = [
+              p1[0] + (p2[0] - p1[0]) * subT,
+              p1[1] + (p2[1] - p1[1]) * subT
+            ];
+
+            const bearing = calculateBearing(p1, p2);
+            vehicleMarkerRef.current.setLatLng(currentPos);
+            vehicleMarkerRef.current.setIcon(createVehicleIcon(bearing));
+
+            const currentDistRemaining = Math.max(2, Math.round(distKm * (1 - progress)));
+            const inGeofence = currentDistRemaining <= 12;
+
+            setProgressPct(Math.round(progress * 100));
+            setTelematics(prev => ({
+              ...prev,
+              bearing,
+              temp: parseFloat((3.8 + Math.sin(step * 0.1) * 0.3).toFixed(1)),
+              speed: Math.round(44 + Math.sin(step * 0.05) * 5),
+              geofenceStatus: inGeofence ? 'Inside 12km Mandi Geofence Zone' : `Approaching Zone (${currentDistRemaining} km away)`
+            }));
+          }
+
+          animFrameRef.current = setTimeout(animateVehicle, 85);
+        };
+
+        if (animFrameRef.current) clearTimeout(animFrameRef.current);
+        animFrameRef.current = setTimeout(animateVehicle, 250);
       } catch (err) {
-        // Fallback already in place with activeWaypoints
+        console.warn('Route update error:', err);
       }
-
-      // Adjust map view to fit new accurate bounds
-      setTimeout(() => {
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.invalidateSize();
-          mapInstanceRef.current.fitBounds([origin, dest], { padding: [60, 60], maxZoom: 12 });
-        }
-      }, 150);
-
-      // Vehicle movement simulation
-      let step = 0;
-      const totalSteps = 400;
-      const animateVehicle = () => {
-        if (!isMounted || !mapInstanceRef.current || !vehicleMarkerRef.current) return;
-
-        step = (step + 1) % totalSteps;
-        const progress = step / totalSteps;
-        const indexFloat = progress * (activeWaypoints.length - 1);
-        const baseIndex = Math.floor(indexFloat);
-        const nextIndex = Math.min(baseIndex + 1, activeWaypoints.length - 1);
-        const subT = indexFloat - baseIndex;
-
-        const p1 = activeWaypoints[baseIndex];
-        const p2 = activeWaypoints[nextIndex];
-        if (p1 && p2) {
-          const currentPos = [
-            p1[0] + (p2[0] - p1[0]) * subT,
-            p1[1] + (p2[1] - p1[1]) * subT
-          ];
-          vehicleMarkerRef.current.setLatLng(currentPos);
-          setProgressPct(Math.round(progress * 100));
-        }
-
-        animFrameRef.current = setTimeout(animateVehicle, 80);
-      };
-
-      if (animFrameRef.current) clearTimeout(animFrameRef.current);
-      animFrameRef.current = setTimeout(animateVehicle, 200);
     };
 
     updateLocationsAndRoute();
@@ -705,12 +1039,10 @@ font-size: 17px;
     };
   }, [pickupLocation, deliveryLocation, shipmentId, crop, quantity]);
 
-  // 3. Connect to backend API & Socket.IO if active
+  // 4. Connect to backend API & Socket.IO
   useEffect(() => {
     logisticsService.getShipment(shipmentId).then((data) => {
-      if (data) {
-        if (data.status) setStatus(data.status);
-      }
+      if (data && data.status) setStatus(data.status);
     });
 
     const unsubscribe = trackingService.subscribe(shipmentId, {
@@ -738,8 +1070,8 @@ font-size: 17px;
             recalculatedPolylineRef.current.setLatLngs(points);
           } else {
             recalculatedPolylineRef.current = L.polyline(points, {
-              color: '#d97706',
-              weight: 5,
+              color: '#f59e0b',
+              weight: 6,
               opacity: 0.95
             }).addTo(mapInstanceRef.current);
           }
@@ -758,56 +1090,351 @@ font-size: 17px;
     };
   }, [shipmentId, onDeviationDetected]);
 
+  const handleToggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => console.warn(err));
+    } else {
+      document.exitFullscreen().catch(err => console.warn(err));
+    }
+  };
+
+  const handleCenterVehicle = () => {
+    if (mapInstanceRef.current && vehicleMarkerRef.current) {
+      mapInstanceRef.current.setView(vehicleMarkerRef.current.getLatLng(), 13, { animate: true });
+    }
+  };
+
+  const handleFitRouteOverview = () => {
+    if (mapInstanceRef.current && farmMarkerRef.current && buyerMarkerRef.current) {
+      mapInstanceRef.current.fitBounds(
+        [farmMarkerRef.current.getLatLng(), buyerMarkerRef.current.getLatLng()],
+        { padding: [80, 80], maxZoom: 12, animate: true }
+      );
+    }
+  };
+
   return (
-    <div className="map-panel" style={{ overflow: 'hidden', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#fff' }}>
-      <div className="map-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '10px' }}>
+    <div
+      ref={containerRef}
+      className="map-panel"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        borderRadius: isFullscreen ? '0' : '14px',
+        border: isFullscreen ? 'none' : '1px solid #cbd5e1',
+        background: '#0f172a',
+        position: 'relative',
+        boxShadow: isFullscreen ? 'none' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+        height: isFullscreen ? '100vh' : 'auto'
+      }}
+    >
+      {/* Top Command Toolbar */}
+      <div
+        className="map-toolbar"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px 18px',
+          background: '#ffffff',
+          borderBottom: '1px solid #e2e8f0',
+          flexWrap: 'wrap',
+          gap: '10px',
+          minHeight: '52px',
+          height: 'auto',
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 20
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Radio style={{ width: '16px', color: '#16a34a' }} />
+            <Radio style={{ width: '16px', color: '#16a34a' }} className="animate-pulse" />
             <b style={{ fontSize: '14px', color: '#0f172a' }}>Shipment {shipmentId}</b>
           </div>
-          <span className={`badge ${isDeviated ? 'badge-amber' : 'badge-blue'}`} style={{ fontWeight: 600 }}>
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 700,
+              padding: '3px 10px',
+              borderRadius: '12px',
+              background: isDeviated ? '#fef3c7' : '#dcfce7',
+              color: isDeviated ? '#92400e' : '#166534',
+              border: isDeviated ? '1px solid #fcd34d' : '1px solid #86efac'
+            }}
+          >
             {isDeviated ? 'Route Recalculated' : status}
           </span>
           <span style={{ fontSize: '13px', color: '#475569' }}>
             <b>{crop}</b> ({quantity}) · <b>{pickupLocation}</b> → <b>{deliveryLocation}</b>
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
             Est. Distance: <b>{routeStats.distance}</b> · ETA: <b>{routeStats.eta}</b>
           </span>
-          <button
-            className="map-control"
-            onClick={() => {
-              if (mapInstanceRef.current && vehicleMarkerRef.current) {
-                mapInstanceRef.current.setView(vehicleMarkerRef.current.getLatLng(), 11);
-              }
-            }}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', background: '#fff', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 600, color: '#334155' }}
-          >
-            <MapPin style={{ width: '14px' }} /> Center Vehicle
-          </button>
+
+          {/* Right Tools: Layers, Center, Fullscreen */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Base Layer Switcher */}
+            <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '2px', border: '1px solid #e2e8f0' }}>
+              {Object.entries(TILE_CONFIG).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => setBaseTileLayer(key)}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: activeBaseLayer === key ? '#166534' : 'transparent',
+                    color: activeBaseLayer === key ? '#ffffff' : '#475569',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {cfg.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Overlay Toggles */}
+            <button
+              onClick={() => setShowMandis(prev => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                padding: '5px 10px',
+                borderRadius: '7px',
+                background: showMandis ? '#e0f2fe' : '#ffffff',
+                border: showMandis ? '1px solid #38bdf8' : '1px solid #cbd5e1',
+                color: showMandis ? '#0369a1' : '#64748b',
+                fontSize: '11px',
+                fontWeight: 600
+              }}
+              title="Toggle APMC Mandis"
+            >
+              <Building2 style={{ width: '13px' }} /> Mandis
+            </button>
+
+            <button
+              onClick={() => setShowColdStorage(prev => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                padding: '5px 10px',
+                borderRadius: '7px',
+                background: showColdStorage ? '#f0fdf4' : '#ffffff',
+                border: showColdStorage ? '1px solid #86efac' : '1px solid #cbd5e1',
+                color: showColdStorage ? '#166534' : '#64748b',
+                fontSize: '11px',
+                fontWeight: 600
+              }}
+              title="Toggle Cold Storage Hubs"
+            >
+              <Warehouse style={{ width: '13px' }} /> Cold Hubs
+            </button>
+
+            {/* Quick Navigation Buttons */}
+            <button
+              onClick={handleCenterVehicle}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                padding: '5px 10px',
+                borderRadius: '7px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#334155'
+              }}
+              title="Follow Active Truck"
+            >
+              <Truck style={{ width: '13px', color: '#16a34a' }} /> Track Truck
+            </button>
+
+            <button
+              onClick={handleFitRouteOverview}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                padding: '5px 10px',
+                borderRadius: '7px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#334155'
+              }}
+              title="Overview of Complete Route"
+            >
+              <Navigation style={{ width: '13px' }} /> Fit Route
+            </button>
+
+            <button
+              onClick={handleToggleFullscreen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                padding: '5px 8px',
+                borderRadius: '7px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#334155'
+              }}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Command View'}
+            >
+              {isFullscreen ? <Minimize2 style={{ width: '14px' }} /> : <Maximize2 style={{ width: '14px' }} />}
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Main Leaflet Map Container */}
       <div
         ref={mapRef}
         style={{
-          height: '420px',
+          height: isFullscreen ? 'auto' : '500px',
+          flex: isFullscreen ? '1 1 auto' : 'none',
+          minHeight: isFullscreen ? '0' : '500px',
           width: '100%',
-          zIndex: 1
+          zIndex: 1,
+          background: '#0f172a',
+          position: 'relative'
         }}
       />
 
-      <div style={{ padding: '10px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', flexWrap: 'wrap', gap: '8px' }}>
+      {/* Floating Cold-Chain Telematics HUD Bar */}
+      <div
+        className="map-telematics-hud"
+        style={{
+          position: 'absolute',
+          bottom: '50px',
+          left: '20px',
+          right: '20px',
+          zIndex: 10,
+          padding: '8px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="map-hud-stat">
+            <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reefer Temp</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Thermometer style={{ width: '14px', color: '#38bdf8' }} />
+              <b style={{ fontSize: '13px', color: '#38bdf8' }}>{telematics.temp}°C</b>
+              <span style={{ fontSize: '10px', color: '#4ade80', marginLeft: '2px' }}>● Safe</span>
+            </div>
+          </div>
+
+          <div className="map-hud-stat">
+            <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Humidity</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Droplets style={{ width: '14px', color: '#60a5fa' }} />
+              <b style={{ fontSize: '13px', color: '#f8fafc' }}>{telematics.humidity}% RH</b>
+            </div>
+          </div>
+
+          <div className="map-hud-stat">
+            <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>GPS Speed</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Gauge style={{ width: '14px', color: '#4ade80' }} />
+              <b style={{ fontSize: '13px', color: '#f8fafc' }}>{telematics.speed} km/h</b>
+            </div>
+          </div>
+
+          <div className="map-hud-stat">
+            <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bearing</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Compass style={{ width: '14px', color: '#fbbf24' }} />
+              <b style={{ fontSize: '13px', color: '#f8fafc' }}>{telematics.bearing}° SSE</b>
+            </div>
+          </div>
+
+          <div className="map-hud-stat">
+            <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fuel Tank</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Fuel style={{ width: '14px', color: '#f97316' }} />
+              <b style={{ fontSize: '13px', color: '#f8fafc' }}>{telematics.fuel}%</b>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
+            Distance: <b style={{ color: '#ffffff' }}>{routeStats.distance}</b> · ETA: <b style={{ color: '#4ade80' }}>{routeStats.eta}</b>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Geofence:</span>
+            <span style={{
+              background: 'rgba(59, 130, 246, 0.25)',
+              border: '1px solid #3b82f6',
+              color: '#93c5fd',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 600
+            }}>
+              {telematics.geofenceStatus}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Route Progression Bar */}
+      <div
+        style={{
+          padding: '10px 18px',
+          background: '#ffffff',
+          borderTop: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '12px',
+          color: '#64748b',
+          flexWrap: 'wrap',
+          gap: '8px',
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 20
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <span>🌾 <b>Origin:</b> {pickupLocation}</span>
           <span>📦 <b>Hub:</b> Transit Hub</span>
+          <span>⚖️ <b>NH-44 Toll Weighbridge</b></span>
+          <span>🛡️ <b>AGMARK Checkpoint</b></span>
           <span>🏬 <b>Destination:</b> {deliveryLocation}</span>
         </div>
         <div>
-          <span>Live Transit Progress: <b>{progressPct}%</b></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>Transit Progress:</span>
+            <div style={{ width: '120px', height: '7px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, #16a34a, #22c55e)', borderRadius: '4px', transition: 'width 0.3s ease' }} />
+            </div>
+            <b style={{ color: '#166534', minWidth: '32px' }}>{progressPct}%</b>
+          </div>
         </div>
       </div>
     </div>

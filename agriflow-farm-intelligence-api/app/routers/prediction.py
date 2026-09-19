@@ -55,9 +55,10 @@ def forecast_demand_endpoint(
 def search_crop_rate(
     crop: str = Query(..., description="Name of fruit, crop, or produce to search"),
     days: int = Query(7, ge=1, le=30, description="Forecast horizon in days"),
+    language: Optional[str] = Query("en", description="Language code (en, hi, pa, bn, mr, te, ta, gu)"),
 ):
     """
     Search actual Mandi benchmark rates for any fruit or crop,
-    and generate Chronos-Bolt price projection.
+    and generate Chronos-Bolt price projection with multilingual recommendations.
     """
-    return get_crop_rate_and_forecast(crop, prediction_length=days)
+    return get_crop_rate_and_forecast(crop, prediction_length=days, language=language or "en")

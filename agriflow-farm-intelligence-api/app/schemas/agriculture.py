@@ -47,6 +47,10 @@ class AgricultureAnalysisRequest(BaseModel):
         default="D",
         description="Time-series frequency, for example D for daily.",
     )
+    language: str = Field(
+        default="en",
+        description="Language code for natural-language analysis.",
+    )
     @field_validator("quality_image_data_url")
     @classmethod
     def validate_image_data_url(cls, value: str) -> str:
@@ -76,3 +80,18 @@ class AgricultureAnalysisResponse(BaseModel):
     demand: ForecastResponse
     matching: MatchingResponse
     aggregation: AggregationResponse
+
+
+class AgricultureChatRequest(BaseModel):
+    query: str = Field(..., min_length=1, description="Farmer or buyer query/question.")
+    language: str = Field(default="en", description="Language code (en, hi, pa, bn, mr, te, ta, gu)")
+    role: str = Field(default="farmer", description="User role: farmer or buyer")
+
+
+class AgricultureChatResponse(BaseModel):
+    query: str
+    language: str
+    language_name: str
+    role: str
+    response: str
+    status: str = "success"

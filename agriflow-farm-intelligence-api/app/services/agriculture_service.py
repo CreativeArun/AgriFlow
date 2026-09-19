@@ -52,13 +52,15 @@ def analyze_agriculture(
     request: AgricultureAnalysisRequest,
 ) -> AgricultureAnalysisResponse:
     """
-    Execute the complete AgriFlow agricultural intelligence workflow.
+    Execute the complete AgriFlow agricultural intelligence workflow with multilingual output.
     """
+    lang = getattr(request, "language", "en") or "en"
 
     # 1. Quality assessment
     try:
         quality = analyze_quality(
-            request.quality_image_data_url
+            request.quality_image_data_url,
+            language=lang,
         )
     except HTTPException:
         raise
@@ -92,6 +94,7 @@ def analyze_agriculture(
         quantity=request.quantity,
         quality_grade=quality.grade,
         location=request.location,
+        language=lang,
     )
 
     matching = find_matches(matching_request)
@@ -133,7 +136,8 @@ def analyze_agriculture(
     )
 
     aggregation = aggregate_insights(
-        aggregation_request
+        aggregation_request,
+        language=lang,
     )
 
     return AgricultureAnalysisResponse(

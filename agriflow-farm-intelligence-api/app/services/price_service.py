@@ -6,6 +6,7 @@ from app.schemas.prediction import (
     ForecastRequest,
     ForecastResponse,
 )
+from app.services.language_service import format_price_recommendation
 
 
 def predict_price(request: ForecastRequest) -> ForecastResponse:
@@ -147,10 +148,13 @@ MANDI_CATALOG = {
 def get_crop_rate_and_forecast(
     crop_name: str,
     prediction_length: int = 7,
+    language: str = "en",
 ) -> dict:
     """
     Search actual Mandi benchmark rates for any fruit or crop,
     and generate Chronos-Bolt price projection with confidence intervals.
+    and generate Chronos-Bolt price projection with confidence intervals
+    and localized natural-language recommendation.
     """
     clean_crop = crop_name.strip()
     clean_lower = clean_crop.lower()
@@ -236,6 +240,14 @@ def get_crop_rate_and_forecast(
         )
     else:
         recommendation = f"Stable price momentum across {mandi}. Favorable window for regular sales."
+    recommendation = format_price_recommendation(
+        crop=crop_label,
+        mandi=mandi,
+        hub=hub,
+        change_pct=change_pct,
+        prediction_length=prediction_length,
+        lang=language,
+    )
 
     return {
         "crop": crop_label,
