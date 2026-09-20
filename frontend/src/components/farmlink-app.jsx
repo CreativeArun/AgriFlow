@@ -1678,7 +1678,7 @@ function BuyerDashboard({ setActive }) {
     buyerService.getSmartMatches({ crop: 'Onion', quantity: 1000, grade: 'Grade A', language: i18n.language }).then(matches => {
       if (matches && matches.length > 0) setSmartMatches(matches)
     })
-    aiService.getPriceForecast('Onion', i18n.language).then(res => {
+    aiService.getPriceForecast('Onion', 7, i18n.language).then(res => {
       if (res) {
         setPriceData(res)
         if (res.forecasts) {
@@ -2830,7 +2830,7 @@ function AIInsightsPage({ setActive }) {
         }
       })
     }
-    aiService.getPriceForecast(selectedCrop, i18n.language).then(res => setPriceForecast(res))
+    aiService.getPriceForecast(selectedCrop, 7, i18n.language).then(res => setPriceForecast(res))
     aiService.getDemandForecast(selectedCrop).then(res => setDemandForecast(res))
     buyerService.getSmartMatches({ crop: selectedCrop, quantity: 1000, grade: 'Grade A', language: i18n.language }).then(matches => {
       if (matches) setSmartMatches(matches)
