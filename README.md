@@ -123,7 +123,7 @@ AgriFlow separates the system into independent services.
 ```text
                          ┌─────────────────────┐
                          │      FRONTEND       │
-                         │     React + Vite     │
+                         │     React + Vite    │
                          └──────────┬──────────┘
                                     │
                   ┌─────────────────┼─────────────────┐
@@ -334,9 +334,9 @@ AgriFlow follows a **microservice-oriented architecture**.
 
 ```text
                          ┌──────────────────────┐
-                         │      React + Vite     │
-                         │       Frontend        │
-                         └───────────┬───────────┘
+                         │      React + Vite    │
+                         │       Frontend       │
+                         └───────────┬──────────┘
                                      │
                       REST APIs / WebSocket
                                      │
